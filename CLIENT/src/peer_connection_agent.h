@@ -26,6 +26,8 @@
 #include <thread>
 #include <vector>
 
+class SimpleDataChannelObserver;
+
 class PeerConnectionAgent
     : public webrtc::PeerConnectionObserver {
 public:
@@ -94,13 +96,32 @@ private:
     std::unique_ptr<webrtc::Thread> signaling_thread_;
     std::unique_ptr<webrtc::Thread> worker_thread_;
     webrtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> pc_factory_;
-    webrtc::scoped_refptr<webrtc::PeerConnectionInterface> peer_connection_;
-    webrtc::scoped_refptr<ScreenCaptureSource> screen_source_;
+    webrtc::scoped_refptr<webrtc::PeerConnectionInterface> peer_connection_;       // publisher
+    webrtc::scoped_refptr<webrtc::PeerConnectionInterface> subscriber_pc_;        // subscriber (receives data)
+    std::vector<webrtc::scoped_refptr<ScreenCaptureSource>> screen_sources_;
 
-    std::string track_cid_ = "screen_0";
+    // Subscriber PeerConnection observer (inner class)
+    class SubscriberObserver : public webrtc::PeerConnectionObserver {
+    public:
+        explicit SubscriberObserver(PeerConnectionAgent* agent) : agent_(agent) {}
+        void OnSignalingChange(webrtc::PeerConnectionInterface::SignalingState) override {}
+        void OnDataChannel(webrtc::scoped_refptr<webrtc::DataChannelInterface> channel) override;
+        void OnIceGatheringChange(webrtc::PeerConnectionInterface::IceGatheringState) override {}
+        void OnIceCandidate(const webrtc::IceCandidate* candidate) override;
+        void OnIceConnectionChange(webrtc::PeerConnectionInterface::IceConnectionState) override {}
+        void OnConnectionChange(webrtc::PeerConnectionInterface::PeerConnectionState) override {}
+        void OnTrack(webrtc::scoped_refptr<webrtc::RtpTransceiverInterface>) override {}
+        void OnRemoveTrack(webrtc::scoped_refptr<webrtc::RtpReceiverInterface>) override {}
+    private:
+        PeerConnectionAgent* agent_;
+    };
+    std::unique_ptr<SubscriberObserver> subscriber_observer_;
+
+    std::vector<std::string> track_cids_;  // one per monitor
     std::atomic<bool> ice_connected_{false};
     std::atomic<bool> disconnected_{false};  // set when PC goes to failed/disconnected
-    bool pending_answer_ = false;  // true when we are creating an answer vs offer
+    bool pending_answer_ = false;           // true when we are creating an answer vs offer
+    bool pending_subscriber_answer_ = false; // subscriber answer in progress
 
     // WHIP fallback state
     SignalingMode signaling_mode_ = SignalingMode::HUBLIVE_WS;
@@ -120,14 +141,14 @@ private:
 
     // Remote control: DataChannel + input injection
     webrtc::scoped_refptr<webrtc::DataChannelInterface> input_data_channel_;
-    std::unique_ptr<webrtc::DataChannelObserver> input_dc_observer_;
+    std::unique_ptr<SimpleDataChannelObserver> input_dc_observer_;
     InputInjector input_injector_;
 
     // LiveKit SFU data channels (for receiving publishData from viewers)
     webrtc::scoped_refptr<webrtc::DataChannelInterface> lossy_dc_;
     webrtc::scoped_refptr<webrtc::DataChannelInterface> reliable_dc_;
-    std::unique_ptr<webrtc::DataChannelObserver> lossy_dc_observer_;
-    std::unique_ptr<webrtc::DataChannelObserver> reliable_dc_observer_;
+    std::unique_ptr<SimpleDataChannelObserver> lossy_dc_observer_;
+    std::unique_ptr<SimpleDataChannelObserver> reliable_dc_observer_;
 
     void OnSfuDataChannelMessage(const webrtc::DataBuffer& buffer);
 };

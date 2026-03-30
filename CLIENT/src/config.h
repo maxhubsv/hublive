@@ -20,7 +20,7 @@ struct AgentConfig {
 
 struct CaptureConfig {
     int fps = 15;
-    int monitor = 0;  // 0-based index (primary monitor)
+    std::string monitor = "all";  // "all" or 0-based index ("0", "1", ...)
     float scale = 1.0f;
 };
 

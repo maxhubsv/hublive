@@ -36,8 +36,8 @@ int main(int argc, char* argv[]) {
     printf("  Server:  %s\n", config.hublive.url.c_str());
     printf("  Room:    %s\n", config.room.name.c_str());
     printf("  Agent:   %s (%s)\n", config.agent.identity.c_str(), config.agent.name.c_str());
-    printf("  Capture: monitor=%d fps=%d scale=%.1f\n",
-           config.capture.monitor, config.capture.fps, config.capture.scale);
+    printf("  Capture: monitor=%s fps=%d scale=%.1f\n",
+           config.capture.monitor.c_str(), config.capture.fps, config.capture.scale);
     printf("  Audio:   system=%s mic=%s sys_gain=%.1f mic_gain=%.1f\n",
            config.audio.system_enabled ? "on" : "off",
            config.audio.mic_enabled ? "on" : "off",

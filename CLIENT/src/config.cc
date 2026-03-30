@@ -46,7 +46,7 @@ AppConfig LoadConfig(const std::string& path) {
             else if (key == "name") config.agent.name = value;
         } else if (current_section == "capture") {
             if (key == "fps") config.capture.fps = std::stoi(value);
-            else if (key == "monitor") config.capture.monitor = std::stoi(value) - 1;
+            else if (key == "monitor") config.capture.monitor = value;  // "all" or "1","2",...
             else if (key == "scale") config.capture.scale = std::stof(value);
         } else if (current_section == "audio") {
             if (key == "system_enabled") config.audio.system_enabled = (value == "true" || value == "1");

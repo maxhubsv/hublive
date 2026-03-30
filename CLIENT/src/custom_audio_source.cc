@@ -10,7 +10,6 @@ CustomAudioSource::CustomAudioSource() {
     options_.noise_suppression = false;
     options_.highpass_filter = false;
     options_.stereo_swapping = false;
-    options_.typing_detection = false;
 }
 
 CustomAudioSource::~CustomAudioSource() = default;

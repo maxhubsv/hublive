@@ -16,7 +16,7 @@ agent:
 # Screen capture settings
 capture:
   fps: 15
-  monitor: 1
+  monitor: all    # "all" for all monitors, or 1, 2, 3... for specific monitor
   scale: 1.0
 
 # Audio settings

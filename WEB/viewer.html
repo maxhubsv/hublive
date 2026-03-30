@@ -45,7 +45,7 @@
 
   <script type="module">
     // HubLive JS SDK from CDN
-    import { Room, RoomEvent, Track, DataPacket_Kind } from 'https://esm.sh/hublive-client@2.9.7';
+    import { Room, RoomEvent, Track, DataPacket_Kind } from 'https://esm.sh/livekit-client@2.9.7';
 
     const WS_URL = 'ws://localhost:7880';
     const API_KEY = 'devkey';
@@ -86,17 +86,20 @@
     // Input event sending
     // -----------------------------------------------------------------------
 
+    let inputSendCount = 0;
     function sendInputEvent(data) {
       if (!room || room.state !== 'connected') return;
       try {
         const json = JSON.stringify(data);
         const bytes = new TextEncoder().encode(json);
-        // publishData sends via the LiveKit data channel.
-        // reliable=true for keyboard, unreliable for mouse moves.
         const reliable = data.t === 2 || (data.t === 1 && data.a !== 1);
         room.localParticipant.publishData(bytes, { reliable });
+        inputSendCount++;
+        if (inputSendCount <= 5 || inputSendCount % 100 === 0) {
+          console.log(`[input] sent #${inputSendCount}:`, data.t === 1 ? 'mouse' : 'key', data.a, reliable ? 'reliable' : 'lossy');
+        }
       } catch (e) {
-        // Silently drop if not connected yet
+        console.error('[input] send failed:', e);
       }
     }
 

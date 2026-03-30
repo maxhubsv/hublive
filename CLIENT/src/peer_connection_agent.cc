@@ -135,12 +135,44 @@ bool PeerConnectionAgent::Initialize() {
         return false;
     }
 
-    // Create screen capture source (but don't start yet).
-    screen_source_ = ScreenCaptureSource::Create(config_.capture.monitor,
-                                                  config_.capture.fps);
-    if (!screen_source_) {
-        printf("[PeerConnectionAgent] Failed to create ScreenCaptureSource\n");
-        return false;
+    // Create screen capture source(s) based on monitor config.
+    {
+        // Enumerate available monitors.
+        auto options = webrtc::DesktopCaptureOptions::CreateDefault();
+        auto temp_capturer = webrtc::DesktopCapturer::CreateScreenCapturer(options);
+        webrtc::DesktopCapturer::SourceList sources;
+        if (temp_capturer) temp_capturer->GetSourceList(&sources);
+
+        int monitor_count = static_cast<int>(sources.size());
+        printf("[PeerConnectionAgent] Found %d monitor(s)\n", monitor_count);
+
+        std::vector<int> indices;
+        if (config_.capture.monitor == "all") {
+            for (int i = 0; i < monitor_count; i++) indices.push_back(i);
+        } else {
+            int idx = std::stoi(config_.capture.monitor);
+            // Config uses 1-based, convert to 0-based
+            if (idx > 0) idx -= 1;
+            if (idx >= 0 && idx < monitor_count) {
+                indices.push_back(idx);
+            } else if (monitor_count > 0) {
+                indices.push_back(0);
+            }
+        }
+
+        for (int idx : indices) {
+            auto src = ScreenCaptureSource::Create(idx, config_.capture.fps);
+            if (src) {
+                screen_sources_.push_back(src);
+                track_cids_.push_back("screen_" + std::to_string(idx));
+                printf("[PeerConnectionAgent] Created capture for monitor %d\n", idx);
+            }
+        }
+
+        if (screen_sources_.empty()) {
+            printf("[PeerConnectionAgent] Failed to create any ScreenCaptureSource\n");
+            return false;
+        }
     }
 
     // Register signaling callbacks.
@@ -197,8 +229,8 @@ void PeerConnectionAgent::Shutdown() {
     }
     reliable_dc_observer_.reset();
 
-    if (screen_source_) {
-        screen_source_->Stop();
+    for (auto& src : screen_sources_) {
+        if (src) src->Stop();
     }
     if (peer_connection_) {
         peer_connection_->Close();
@@ -252,10 +284,10 @@ void PeerConnectionAgent::Disconnect() {
     reliable_dc_observer_.reset();
 
     // Stop screen capture (frames are not useful without a PC).
-    // The source object itself stays alive — Start() will be called again
+    // The source objects stay alive — Start() will be called again
     // when AddScreenTrack() runs on the next successful join.
-    if (screen_source_) {
-        screen_source_->Stop();
+    for (auto& src : screen_sources_) {
+        if (src) src->Stop();
     }
 
     // Close and release the PeerConnection.  This detaches all senders/tracks.
@@ -263,6 +295,13 @@ void PeerConnectionAgent::Disconnect() {
         peer_connection_->Close();
         peer_connection_ = nullptr;
     }
+
+    // Close subscriber PeerConnection.
+    if (subscriber_pc_) {
+        subscriber_pc_->Close();
+        subscriber_pc_ = nullptr;
+    }
+    subscriber_observer_.reset();
 
     // Release WHIP state if we were in that mode.
     whip_client_.reset();
@@ -273,6 +312,7 @@ void PeerConnectionAgent::Disconnect() {
     ice_connected_ = false;
     disconnected_ = false;
     pending_answer_ = false;
+    pending_subscriber_answer_ = false;
 
     printf("[PeerConnectionAgent] Disconnect complete — ready for reconnect\n");
 }
@@ -314,23 +354,28 @@ void PeerConnectionAgent::FallbackToWhip(const std::string& whip_url,
     peer_connection_ = result.MoveValue();
     printf("[PeerConnectionAgent] WHIP: PeerConnection created\n");
 
-    // Add screen track (no signaling AddTrack needed for WHIP).
-    if (!screen_source_ || !peer_connection_) return;
-    screen_source_->Start();
+    // Add screen tracks (no signaling AddTrack needed for WHIP).
+    if (screen_sources_.empty() || !peer_connection_) return;
+    for (size_t i = 0; i < screen_sources_.size(); i++) {
+        auto& src = screen_sources_[i];
+        src->Start();
 
-    auto video_track = pc_factory_->CreateVideoTrack(screen_source_, "screen_0");
-    if (!video_track) {
-        printf("[PeerConnectionAgent] WHIP: Failed to create video track\n");
-        return;
-    }
+        std::string track_id = "screen_" + std::to_string(i);
+        auto video_track = pc_factory_->CreateVideoTrack(src, track_id);
+        if (!video_track) {
+            printf("[PeerConnectionAgent] WHIP: Failed to create video track (monitor %zu)\n", i);
+            continue;
+        }
 
-    auto add_result = peer_connection_->AddTrack(video_track, {"stream_0"});
-    if (!add_result.ok()) {
-        printf("[PeerConnectionAgent] WHIP: AddTrack error: %s\n",
-               add_result.error().message());
-        return;
+        std::string stream_id = "stream_" + std::to_string(i);
+        auto add_result = peer_connection_->AddTrack(video_track, {stream_id});
+        if (!add_result.ok()) {
+            printf("[PeerConnectionAgent] WHIP: AddTrack error (monitor %zu): %s\n",
+                   i, add_result.error().message());
+        } else {
+            printf("[PeerConnectionAgent] WHIP: Screen track added (monitor %zu)\n", i);
+        }
     }
-    printf("[PeerConnectionAgent] WHIP: Screen track added\n");
 
     // Add audio track (WHIP mode — no signaling AddTrack needed).
     if (audio_source_) {
@@ -395,25 +440,69 @@ void PeerConnectionAgent::OnRemoteOffer(const std::string& sdp) {
     printf("[PeerConnectionAgent] Got remote offer (subscriber) (%zu bytes)\n",
            sdp.size());
 
-    if (!peer_connection_) {
-        printf("[PeerConnectionAgent] No PeerConnection for offer\n");
+    if (!pc_factory_) {
+        printf("[PeerConnectionAgent] No factory for subscriber PC\n");
         return;
+    }
+
+    // Create subscriber PeerConnection if not yet created.
+    if (!subscriber_pc_) {
+        subscriber_observer_ = std::make_unique<SubscriberObserver>(this);
+
+        webrtc::PeerConnectionInterface::RTCConfiguration rtc_config;
+        rtc_config.sdp_semantics = webrtc::SdpSemantics::kUnifiedPlan;
+        webrtc::PeerConnectionInterface::IceServer stun;
+        stun.uri = "stun:stun.l.google.com:19302";
+        rtc_config.servers.push_back(stun);
+
+        webrtc::PeerConnectionDependencies deps(subscriber_observer_.get());
+        auto result = pc_factory_->CreatePeerConnectionOrError(
+            rtc_config, std::move(deps));
+        if (!result.ok()) {
+            printf("[PeerConnectionAgent] Failed to create subscriber PC\n");
+            return;
+        }
+        subscriber_pc_ = result.MoveValue();
+        printf("[PeerConnectionAgent] Subscriber PeerConnection created\n");
     }
 
     auto desc = webrtc::CreateSessionDescription(webrtc::SdpType::kOffer, sdp);
     if (!desc) {
-        printf("[PeerConnectionAgent] Failed to parse offer SDP\n");
+        printf("[PeerConnectionAgent] Failed to parse subscriber offer SDP\n");
         return;
     }
 
-    // Set the remote offer, then create an answer in the completion callback.
+    // Set the remote offer, then create an answer.
     auto observer = webrtc::make_ref_counted<SetRemoteSdpObserver>(
         [this](webrtc::RTCError error) {
-            if (error.ok()) {
-                CreateAnswer();
+            if (!error.ok()) {
+                printf("[PeerConnectionAgent] Subscriber SetRemoteDesc failed: %s\n",
+                       error.message());
+                return;
             }
+            // Create answer on subscriber PC.
+            webrtc::PeerConnectionInterface::RTCOfferAnswerOptions opts;
+            auto create_obs = webrtc::make_ref_counted<CreateSdpObserver>(
+                [this](webrtc::SessionDescriptionInterface* desc) {
+                    // Set local description and send answer to server.
+                    std::string sdp;
+                    desc->ToString(&sdp);
+                    printf("[PeerConnectionAgent] Subscriber answer created (%zu bytes)\n", sdp.size());
+
+                    auto set_obs = webrtc::make_ref_counted<SetLocalSdpObserver>();
+                    auto answer_desc = webrtc::CreateSessionDescription(webrtc::SdpType::kAnswer, sdp);
+                    subscriber_pc_->SetLocalDescription(std::move(answer_desc), set_obs);
+
+                    // Send answer back to server via signaling.
+                    signaling_->SendAnswer(sdp);
+                },
+                [](webrtc::RTCError error) {
+                    printf("[PeerConnectionAgent] Subscriber CreateAnswer failed: %s\n",
+                           error.message());
+                });
+            subscriber_pc_->CreateAnswer(create_obs.get(), opts);
         });
-    peer_connection_->SetRemoteDescription(std::move(desc), observer);
+    subscriber_pc_->SetRemoteDescription(std::move(desc), observer);
 }
 
 void PeerConnectionAgent::OnRemoteTrickle(const std::string& candidate_json,
@@ -459,8 +548,13 @@ void PeerConnectionAgent::OnRemoteTrickle(const std::string& candidate_json,
         return;
     }
 
-    if (!peer_connection_->AddIceCandidate(candidate.get())) {
-        printf("[PeerConnectionAgent] Failed to add ICE candidate\n");
+    // target=0 is publisher, target=1 is subscriber (LiveKit convention)
+    auto* pc = (target == 1 && subscriber_pc_) ? subscriber_pc_.get()
+                                                : peer_connection_.get();
+    if (pc) {
+        if (!pc->AddIceCandidate(candidate.get())) {
+            printf("[PeerConnectionAgent] Failed to add ICE candidate (target=%d)\n", target);
+        }
     }
 }
 
@@ -504,33 +598,40 @@ bool PeerConnectionAgent::CreatePeerConnection(
 }
 
 void PeerConnectionAgent::AddScreenTrack() {
-    if (!screen_source_ || !peer_connection_) return;
+    if (screen_sources_.empty() || !peer_connection_) return;
 
-    // Start capturing frames.
-    screen_source_->Start();
+    for (size_t i = 0; i < screen_sources_.size(); i++) {
+        auto& src = screen_sources_[i];
+        const auto& cid = track_cids_[i];
 
-    // Tell HubLive server about the track before adding it to the PC.
-    signaling_->SendAddTrack(
-        track_cid_,
-        "screen",
-        hublive::TrackType::VIDEO,
-        hublive::TrackSource::SCREEN_SHARE,
-        static_cast<uint32_t>(screen_source_->width()),
-        static_cast<uint32_t>(screen_source_->height()));
+        // Start capturing frames.
+        src->Start();
 
-    // Create a video track from the screen capture source.
-    auto video_track = pc_factory_->CreateVideoTrack(screen_source_, "screen_0");
-    if (!video_track) {
-        printf("[PeerConnectionAgent] Failed to create video track\n");
-        return;
-    }
+        // Tell HubLive server about the track before adding it to the PC.
+        signaling_->SendAddTrack(
+            cid,
+            "screen_" + std::to_string(i),
+            hublive::TrackType::VIDEO,
+            hublive::TrackSource::SCREEN_SHARE,
+            static_cast<uint32_t>(src->width()),
+            static_cast<uint32_t>(src->height()));
 
-    auto add_result = peer_connection_->AddTrack(video_track, {"stream_0"});
-    if (!add_result.ok()) {
-        printf("[PeerConnectionAgent] AddTrack error: %s\n",
-               add_result.error().message());
-    } else {
-        printf("[PeerConnectionAgent] Screen track added\n");
+        // Create a video track from the screen capture source.
+        std::string track_id = "screen_" + std::to_string(i);
+        auto video_track = pc_factory_->CreateVideoTrack(src, track_id);
+        if (!video_track) {
+            printf("[PeerConnectionAgent] Failed to create video track for monitor %zu\n", i);
+            continue;
+        }
+
+        std::string stream_id = "stream_" + std::to_string(i);
+        auto add_result = peer_connection_->AddTrack(video_track, {stream_id});
+        if (!add_result.ok()) {
+            printf("[PeerConnectionAgent] AddTrack error (monitor %zu): %s\n",
+                   i, add_result.error().message());
+        } else {
+            printf("[PeerConnectionAgent] Screen track added (monitor %zu)\n", i);
+        }
     }
 }
 
@@ -737,6 +838,7 @@ public:
 
     explicit SimpleDataChannelObserver(MessageCb on_message)
         : on_message_(std::move(on_message)) {}
+    ~SimpleDataChannelObserver() override = default;
 
     void OnStateChange() override {}
     void OnMessage(const webrtc::DataBuffer& buffer) override {
@@ -846,9 +948,7 @@ void PeerConnectionAgent::OnSfuDataChannelMessage(
     if (payload.empty()) return;
 
     // Wrap the payload as a DataBuffer and route through the same handler.
-    rtc::CopyOnWriteBuffer cow(
-        reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
-    webrtc::DataBuffer json_buf(std::move(cow), /* binary */ false);
+    webrtc::DataBuffer json_buf(payload);
     OnInputDataChannelMessage(json_buf);
 }
 
@@ -1053,13 +1153,34 @@ void PeerConnectionAgent::OnConnectionChange(
             disconnected_ = true;
             break;
         case webrtc::PeerConnectionInterface::PeerConnectionState::kClosed:
-            // kClosed is triggered by an explicit PeerConnection::Close() call
-            // (from Disconnect() or Shutdown()). Do NOT set disconnected_ here
-            // to avoid a race with the main thread's retry logic — Disconnect()
-            // resets the flag itself after Close() returns.
             ice_connected_ = false;
             break;
         default:
             break;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Subscriber PeerConnection Observer
+// ---------------------------------------------------------------------------
+
+void PeerConnectionAgent::SubscriberObserver::OnDataChannel(
+    webrtc::scoped_refptr<webrtc::DataChannelInterface> channel) {
+    printf("[Subscriber] DataChannel received: %s\n", channel->label().c_str());
+    // Route to the main agent's OnDataChannel handler.
+    agent_->OnDataChannel(channel);
+}
+
+void PeerConnectionAgent::SubscriberObserver::OnIceCandidate(
+    const webrtc::IceCandidate* candidate) {
+    if (!candidate) return;
+    std::string sdp_str = candidate->ToString();
+    std::string sdp_mid = candidate->sdp_mid();
+    int sdp_mline_index = candidate->sdp_mline_index();
+
+    // Send ICE candidate for subscriber (target=SUBSCRIBER=1).
+    std::string json = "{\"candidate\":\"" + sdp_str + "\","
+                       "\"sdpMid\":\"" + sdp_mid + "\","
+                       "\"sdpMLineIndex\":" + std::to_string(sdp_mline_index) + "}";
+    agent_->signaling_->SendTrickle(json, hublive::SignalTarget::SUBSCRIBER);
 }
