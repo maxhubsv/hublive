@@ -17,51 +17,61 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* ── Layout ── */
-  --width-sidebar: 16rem;        /* w-sidebar = 256px */
-  --height-header: 3.5rem;       /* h-header  = 56px  */
+  --width-sidebar: 16rem;
+  --height-header: 3.5rem;
 
   /* ── Spacing scale ── */
-  --spacing-page: 1.5rem;        /* p-page    = 24px  (main content padding) */
-  --spacing-section: 1rem;       /* gap/p     = 16px  (card padding, grid gap) */
-  --spacing-element: 0.5rem;     /* gap       = 8px   (between elements) */
-  --spacing-tight: 0.375rem;     /* gap       = 6px   (compact spacing) */
+  --spacing-page: 1.5rem;       /* 24px  main content padding */
+  --spacing-section: 1rem;      /* 16px  card padding, grid gap */
+  --spacing-element: 0.5rem;    /* 8px   between elements */
+  --spacing-tight: 0.375rem;    /* 6px   compact spacing */
+  --spacing-micro: 0.25rem;     /* 4px   label margins, tiny gaps */
+  --spacing-hairline: 0.125rem; /* 2px   minimal separators */
 
   /* ── Component sizes ── */
-  --size-icon-sm: 1rem;          /* 16px  nav icons */
-  --size-icon-md: 2rem;          /* 32px  badge/logo icons */
-  --size-icon-lg: 2.5rem;        /* 40px  auth logo */
-  --size-swatch: 1.75rem;        /* 28px  color swatch */
-  --size-spinner: 2rem;          /* 32px  loading spinner */
+  --size-icon-sm: 1.25rem;      /* 20px  nav icons, inline icons */
+  --size-icon-md: 2.25rem;      /* 36px  badge/logo containers */
+  --size-icon-lg: 2.75rem;      /* 44px  auth logo */
+  --size-swatch: 1.75rem;       /* 28px  color swatch */
+  --size-spinner: 2rem;         /* 32px  loading spinner */
+  --size-dot: 0.5rem;           /* 8px   status indicator dot */
 
   /* ── Border radius ── */
-  --radius-sm: 0.25rem;          /* 4px   small elements */
-  --radius-md: 0.375rem;         /* 6px   buttons, inputs */
-  --radius-lg: 0.5rem;           /* 8px   cards, modals */
-  --radius-full: 9999px;         /* pill  badges, spinners */
+  --radius-sm: 0.25rem;         /* 4px */
+  --radius-md: 0.375rem;        /* 6px */
+  --radius-lg: 0.5rem;          /* 8px */
+  --radius-full: 9999px;
 
   /* ── Font sizes ── */
-  --text-page-title: 1.5rem;     /* 24px  page headings */
-  --text-section-title: 1.125rem;/* 18px  section headings */
-  --text-body: 0.875rem;         /* 14px  body text, labels */
-  --text-caption: 0.75rem;       /* 12px  captions, badges */
-  --text-micro: 0.625rem;        /* 10px  hex codes, tiny labels */
+  --text-page-title: 1.5rem;
+  --text-section-title: 1.125rem;
+  --text-body: 0.875rem;
+  --text-caption: 0.75rem;
+  --text-micro: 0.625rem;
 }
 
 @layer base {
+  /* Derive shorthand vars from @theme (single source of truth) */
   :root {
-    --bg-primary: #0A0A0B;
-    --bg-secondary: #141416;
-    --bg-tertiary: #1C1C1F;
-    --text-primary: #FAFAFA;
-    --text-secondary: #A0A0A8;
-    --accent: #3B82F6;
-    --success: #22C55E;
-    --danger: #EF4444;
-    --warning: #F59E0B;
+    --bg-primary: var(--color-bg-primary);
+    --bg-secondary: var(--color-bg-secondary);
+    --bg-tertiary: var(--color-bg-tertiary);
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --accent: var(--color-accent);
+    --success: var(--color-success);
+    --danger: var(--color-danger);
+    --warning: var(--color-warning);
   }
 
   * {
     border-color: var(--bg-tertiary);
+    scrollbar-width: none;          /* Firefox */
+    -ms-overflow-style: none;       /* IE/Edge */
+  }
+
+  *::-webkit-scrollbar {
+    display: none;                  /* Chrome/Safari/Opera */
   }
 
   html,
@@ -77,5 +87,10 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Lucide icons: thinner strokes for crispness at small sizes */
+  svg.lucide {
+    stroke-width: 1.5px;
   }
 }

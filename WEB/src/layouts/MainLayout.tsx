@@ -1,9 +1,17 @@
+import { useState, useCallback } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/ui/button";
 import { APP_NAME, LOCALES, LOCALE_LABELS, type Locale } from "@/shared/constants";
-import { LayoutDashboard, Monitor, Radio, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  Menu,
+  Monitor,
+  Radio,
+  Settings,
+  X,
+} from "lucide-react";
 
 const NAV_ITEMS: ReadonlyArray<{
   to: string;
@@ -18,17 +26,41 @@ const NAV_ITEMS: ReadonlyArray<{
 
 export function MainLayout() {
   const { t, i18n } = useTranslation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="flex w-sidebar shrink-0 flex-col border-r border-bg-tertiary bg-bg-secondary">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-sidebar flex-col border-r border-bg-tertiary bg-bg-secondary transition-transform lg:static lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         {/* Logo */}
-        <div className="flex h-header items-center gap-element border-b border-bg-tertiary px-page">
-          <div className="flex size-icon-md items-center justify-center rounded-lg bg-accent">
-            <Monitor className="size-icon-sm text-white" />
+        <div className="flex h-header items-center justify-between border-b border-bg-tertiary px-page">
+          <div className="flex items-center gap-element">
+            <div className="flex size-icon-md items-center justify-center rounded-lg bg-accent">
+              <Monitor className="size-icon-sm text-white" />
+            </div>
+            <span className="text-section-title font-semibold">{APP_NAME}</span>
           </div>
-          <span className="text-section-title font-semibold">{APP_NAME}</span>
+          <button
+            onClick={closeSidebar}
+            className="text-text-secondary lg:hidden"
+          >
+            <X className="size-icon-sm" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -38,6 +70,7 @@ export function MainLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={closeSidebar}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-tight rounded-md px-tight py-element text-body font-medium transition-colors",
@@ -57,7 +90,18 @@ export function MainLayout() {
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-header shrink-0 items-center justify-end border-b border-bg-tertiary bg-bg-secondary px-page">
+        <header className="flex h-header shrink-0 items-center justify-between border-b border-bg-tertiary bg-bg-secondary px-page">
+          {/* Hamburger — mobile only */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-text-secondary lg:hidden"
+          >
+            <Menu className="size-icon-sm" />
+          </button>
+
+          {/* Spacer for desktop (pushes locale buttons right) */}
+          <div className="hidden lg:block" />
+
           <div className="flex items-center gap-hairline">
             {LOCALES.map((locale) => (
               <Button
@@ -73,7 +117,7 @@ export function MainLayout() {
         </header>
 
         {/* Page content */}
-        <main className="min-h-0 flex-1 overflow-hidden p-page">
+        <main className="min-h-0 flex-1 overflow-hidden p-section lg:p-page">
           <Outlet />
         </main>
       </div>

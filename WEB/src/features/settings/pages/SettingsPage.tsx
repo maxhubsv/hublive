@@ -91,7 +91,7 @@ export default function SettingsPage() {
                 <Input
                   value={urlDraft}
                   onChange={(e) => setUrlDraft(e.target.value)}
-                  className="w-64"
+                  className="w-40 sm:w-64"
                 />
                 {urlChanged && (
                   <Button size="sm" onClick={saveUrl}>
@@ -110,7 +110,7 @@ export default function SettingsPage() {
                 <Input
                   value={roomDraft}
                   onChange={(e) => setRoomDraft(e.target.value)}
-                  className="w-48"
+                  className="w-32 sm:w-48"
                 />
                 {roomChanged && (
                   <Button size="sm" onClick={saveRoom}>

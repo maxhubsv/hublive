@@ -21,7 +21,7 @@ export function SettingItem({
   return (
     <div
       className={cn(
-        "flex items-center gap-section px-section py-element",
+        "flex flex-wrap items-center gap-x-section gap-y-element px-section py-element sm:flex-nowrap",
         !isLast && "border-b border-bg-tertiary",
         className,
       )}
@@ -40,7 +40,7 @@ export function SettingItem({
       </div>
 
       {/* Control */}
-      {control && <div className="shrink-0">{control}</div>}
+      {control && <div className="ml-auto shrink-0 sm:ml-0">{control}</div>}
     </div>
   );
 }

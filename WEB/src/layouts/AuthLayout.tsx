@@ -4,8 +4,8 @@ import { APP_NAME } from "@/shared/constants";
 
 export function AuthLayout() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-      <div className="w-full max-w-md rounded-lg border border-bg-tertiary bg-bg-secondary p-page">
+    <div className="flex min-h-screen items-center justify-center bg-bg-primary p-section">
+      <div className="w-full max-w-md rounded-lg border border-bg-tertiary bg-bg-secondary p-section sm:p-page">
         <div className="mb-page flex items-center justify-center gap-element">
           <div className="flex size-icon-lg items-center justify-center rounded-lg bg-accent">
             <Monitor className="size-icon-md text-white" />

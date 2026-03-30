@@ -49,13 +49,13 @@ export default function TestPage() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col gap-section overflow-hidden">
+    <div className="flex h-full flex-col gap-section overflow-y-auto lg:overflow-hidden">
       <div className="shrink-0">
         <h1 className="text-page-title font-bold">{t("test.title")}</h1>
         <p className="mt-tight text-text-secondary">{t("test.subtitle")}</p>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-section md:grid-cols-2">
+      <div className="grid gap-section md:grid-cols-2 lg:min-h-0 lg:flex-1">
         {/* Routing */}
         <Card>
           <div className="mb-element flex items-center gap-element">
