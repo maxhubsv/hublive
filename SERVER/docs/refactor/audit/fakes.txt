@@ -1,0 +1,115 @@
+=== Fakes Usage ===
+--- servicefakes imports ---
+pkg/service/roomallocator_test.go:29:	"github.com/hublive/hublive-server/pkg/service/servicefakes"
+pkg/service/roomallocator_test.go:89:	store := &servicefakes.FakeObjectStore{}
+pkg/service/roomservice_test.go:32:	"github.com/hublive/hublive-server/pkg/service/servicefakes"
+pkg/service/roomservice_test.go:109:	allocator := &servicefakes.FakeRoomAllocator{}
+pkg/service/roomservice_test.go:110:	store := &servicefakes.FakeServiceStore{}
+pkg/service/roomservice_test.go:136:	allocator *servicefakes.FakeRoomAllocator
+pkg/service/roomservice_test.go:137:	store     *servicefakes.FakeServiceStore
+pkg/service/servicefakes/fake_agent_store.go:2:package servicefakes
+pkg/service/servicefakes/fake_egress_store.go:2:package servicefakes
+pkg/service/servicefakes/fake_ingress_store.go:2:package servicefakes
+pkg/service/servicefakes/fake_ioclient.go:2:package servicefakes
+pkg/service/servicefakes/fake_object_store.go:2:package servicefakes
+pkg/service/servicefakes/fake_room_allocator.go:2:package servicefakes
+pkg/service/servicefakes/fake_service_store.go:2:package servicefakes
+pkg/service/servicefakes/fake_session_handler.go:2:package servicefakes
+pkg/service/servicefakes/fake_sipstore.go:2:package servicefakes
+pkg/service/signal_test.go:30:	"github.com/hublive/hublive-server/pkg/service/servicefakes"
+pkg/service/signal_test.go:66:		handler := &servicefakes.FakeSessionHandler{
+pkg/service/signal_test.go:122:		handler := &servicefakes.FakeSessionHandler{
+
+--- typesfakes imports ---
+pkg/rtc/participant_internal_test.go:44:	"github.com/hublive/hublive-server/pkg/rtc/types/typesfakes"
+pkg/rtc/participant_internal_test.go:83:		track := &typesfakes.FakeMediaTrack{}
+pkg/rtc/participant_internal_test.go:87:		p.listener().(*typesfakes.FakeLocalParticipantListener).OnTrackUpdatedCalls(func(p types.Participant, track types.MediaTrack) {
+pkg/rtc/participant_internal_test.go:90:		p.listener().(*typesfakes.FakeLocalParticipantListener).OnTrackPublishedCalls(func(p types.Participant, track types.MediaTrack) {
+pkg/rtc/participant_internal_test.go:143:		track := &typesfakes.FakeLocalMediaTrack{}
+pkg/rtc/participant_internal_test.go:176:		track := &typesfakes.FakeLocalMediaTrack{}
+pkg/rtc/participant_internal_test.go:265:		track := &typesfakes.FakeMediaTrack{}
+pkg/rtc/participant_internal_test.go:815:		TelemetryListener:      &typesfakes.FakeParticipantTelemetryListener{},
+pkg/rtc/participant_internal_test.go:817:		ParticipantListener:    &typesfakes.FakeLocalParticipantListener{},
+pkg/rtc/participant_internal_test.go:818:		ParticipantHelper:      &typesfakes.FakeLocalParticipantHelper{},
+pkg/rtc/room_test.go:34:	"github.com/hublive/hublive-server/pkg/rtc/types/typesfakes"
+pkg/rtc/room_test.go:136:		p := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:137:		disconnectedParticipant := participants[1].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:151:			fakeP := op.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:208:				fp := p.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:221:				fp := p.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:432:		p0 := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:434:		p1 := participants[1].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:437:		pub := participants[2].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:451:	getActiveSpeakerUpdates := func(p *typesfakes.FakeLocalParticipant) [][]*hublive.SpeakerInfo {
+pkg/rtc/room_test.go:465:		p := rm.GetParticipants()[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:478:		p := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:479:		p2 := participants[1].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:493:		p := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:503:				op := op.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:533:		p := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:534:		op := participants[1].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:629:				p := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:652:					fp := op.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:675:				p := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:676:				p1 := participants[1].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:702:					fp := op.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:719:		p := participants[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:737:			fp := op.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:780:		p1 := rm.GetParticipants()[0].(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:802:			fp := op.(*typesfakes.FakeLocalParticipant)
+pkg/rtc/room_test.go:856:			&typesfakes.FakeMediaTrack{},
+pkg/rtc/subscriptionmanager_test.go:28:	"github.com/hublive/hublive-server/pkg/rtc/types/typesfakes"
+pkg/rtc/subscriptionmanager_test.go:85:		tl := sm.params.TelemetryListener.(*typesfakes.FakeParticipantTelemetryListener)
+pkg/rtc/subscriptionmanager_test.go:144:		tl := sm.params.TelemetryListener.(*typesfakes.FakeParticipantTelemetryListener)
+pkg/rtc/subscriptionmanager_test.go:221:	res.Track.(*typesfakes.FakeMediaTrack).RemoveSubscriberCalls(func(pID hublive.ParticipantID, isExpectedToResume bool) {
+pkg/rtc/subscriptionmanager_test.go:256:	tl := sm.params.TelemetryListener.(*typesfakes.FakeParticipantTelemetryListener)
+pkg/rtc/subscriptionmanager_test.go:290:	st1.MediaTrack().(*typesfakes.FakeMediaTrack).RemoveSubscriberCalls(func(pID hublive.ParticipantID, isExpectedToResume bool) {
+pkg/rtc/subscriptionmanager_test.go:293:	st2.MediaTrack().(*typesfakes.FakeMediaTrack).RemoveSubscriberCalls(func(pID hublive.ParticipantID, isExpectedToResume bool) {
+pkg/rtc/subscriptionmanager_test.go:343:	st := s.getSubscribedTrack().(*typesfakes.FakeSubscribedTrack)
+pkg/rtc/subscriptionmanager_test.go:396:	tl := sm.params.TelemetryListener.(*typesfakes.FakeParticipantTelemetryListener)
+pkg/rtc/subscriptionmanager_test.go:461:	p := &typesfakes.FakeLocalParticipant{}
+pkg/rtc/subscriptionmanager_test.go:475:		TelemetryListener:      &typesfakes.FakeParticipantTelemetryListener{},
+pkg/rtc/subscriptionmanager_test.go:517:		mt := &typesfakes.FakeMediaTrack{}
+pkg/rtc/subscriptionmanager_test.go:518:		st := &typesfakes.FakeSubscribedTrack{}
+pkg/rtc/subscriptionmanager_test.go:533:	fst, ok := st.(*typesfakes.FakeSubscribedTrack)
+pkg/rtc/subscriptionmanager_test.go:542:	fst, ok := st.(*typesfakes.FakeSubscribedTrack)
+pkg/rtc/testutils.go:25:	"github.com/hublive/hublive-server/pkg/rtc/types/typesfakes"
+pkg/rtc/testutils.go:34:) *typesfakes.FakeLocalParticipant {
+pkg/rtc/testutils.go:35:	p := &typesfakes.FakeLocalParticipant{}
+pkg/rtc/testutils.go:78:func NewMockTrack(kind hublive.TrackType, name string) *typesfakes.FakeMediaTrack {
+pkg/rtc/testutils.go:79:	t := &typesfakes.FakeMediaTrack{}
+pkg/rtc/types/typesfakes/fake_data_down_track.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_data_track.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_data_track_sender.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_data_track_transport.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_local_media_track.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_local_participant.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_local_participant_helper.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_local_participant_listener.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_media_track.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_participant.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_participant_listener.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_participant_telemetry_listener.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_room.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_subscribed_track.go:2:package typesfakes
+pkg/rtc/types/typesfakes/fake_websocket_client.go:2:package typesfakes
+pkg/rtc/uptrackmanager_test.go:27:	"github.com/hublive/hublive-server/pkg/rtc/types/typesfakes"
+pkg/rtc/uptrackmanager_test.go:40:		tra := &typesfakes.FakeMediaTrack{}
+pkg/rtc/uptrackmanager_test.go:44:		trv := &typesfakes.FakeMediaTrack{}
+pkg/rtc/uptrackmanager_test.go:63:		lp1 := &typesfakes.FakeLocalParticipant{}
+pkg/rtc/uptrackmanager_test.go:65:		lp2 := &typesfakes.FakeLocalParticipant{}
+pkg/rtc/uptrackmanager_test.go:131:		tra := &typesfakes.FakeMediaTrack{}
+pkg/rtc/uptrackmanager_test.go:135:		trv := &typesfakes.FakeMediaTrack{}
+pkg/rtc/uptrackmanager_test.go:139:		lp1 := &typesfakes.FakeLocalParticipant{}
+pkg/rtc/uptrackmanager_test.go:141:		lp2 := &typesfakes.FakeLocalParticipant{}
+pkg/rtc/uptrackmanager_test.go:224:		tra := &typesfakes.FakeMediaTrack{}
+pkg/rtc/uptrackmanager_test.go:228:		trv := &typesfakes.FakeMediaTrack{}
+pkg/rtc/uptrackmanager_test.go:268:		trs := &typesfakes.FakeMediaTrack{}
+pkg/rtc/uptrackmanager_test.go:310:		trw := &typesfakes.FakeMediaTrack{}
+
+--- counterfeiter generate directives ---
+pkg/routing/interfaces.go:34://go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+pkg/rtc/transport/handler.go:27://go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+pkg/rtc/types/interfaces.go:41://go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+pkg/service/interfaces.go:24://go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+pkg/telemetry/telemetryservice.go:29://go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate

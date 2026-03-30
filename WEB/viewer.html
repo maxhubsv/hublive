@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HubLive Stream Viewer</title>
+<style>
+  body { margin: 0; background: #1a1a2e; color: #eee; font-family: monospace; display: flex; flex-direction: column; align-items: center; }
+  h1 { margin: 20px 0 10px; font-size: 1.4em; }
+  #status { padding: 8px 16px; border-radius: 4px; margin: 10px; font-size: 0.9em; }
+  .connecting { background: #e2a03f; color: #000; }
+  .connected { background: #27ae60; color: #fff; }
+  .disconnected { background: #c0392b; color: #fff; }
+  #video-container { margin: 20px; border: 2px solid #333; border-radius: 8px; overflow: hidden; background: #000; }
+  video { display: block; max-width: 90vw; max-height: 75vh; }
+  #log { width: 80%; max-height: 150px; overflow-y: auto; background: #111; padding: 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 20px; }
+  .log-entry { margin: 2px 0; }
+</style>
+</head>
+<body>
+  <h1>HubLive C++ Agent Viewer</h1>
+  <div id="status" class="connecting">Connecting...</div>
+  <div id="video-container">
+    <video id="video" autoplay playsinline muted></video>
+  </div>
+  <div id="log"></div>
+
+  <script type="module">
+    // HubLive JS SDK from CDN
+    import { Room, RoomEvent, Track } from 'https://esm.sh/hublive-client@2.9.7';
+
+    const WS_URL = 'ws://localhost:7880';
+    const API_KEY = 'devkey';
+    const API_SECRET = 'secret';
+    const ROOM_NAME = 'screen-share';
+    const VIEWER_IDENTITY = 'web-viewer-' + Math.random().toString(36).substring(2, 6);
+
+    const statusEl = document.getElementById('status');
+    const videoEl = document.getElementById('video');
+    const logEl = document.getElementById('log');
+
+    function log(msg) {
+      const d = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.textContent = `[${d}] ${msg}`;
+      logEl.prepend(entry);
+      console.log(msg);
+    }
+
+    function setStatus(text, cls) {
+      statusEl.textContent = text;
+      statusEl.className = cls;
+    }
+
+    // Generate JWT token client-side (for dev only)
+    async function generateToken() {
+      // Use the hublive-client's built-in token generation or create manually
+      // For dev, we'll create a simple JWT
+      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+      const now = Math.floor(Date.now() / 1000);
+      const payload = btoa(JSON.stringify({
+        iss: API_KEY,
+        sub: VIEWER_IDENTITY,
+        nbf: now,
+        exp: now + 86400,
+        iat: now,
+        identity: VIEWER_IDENTITY,
+        name: 'Web Viewer',
+        video: {
+          roomJoin: true,
+          room: ROOM_NAME,
+          canPublish: false,
+          canSubscribe: true
+        }
+      })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+      const signingInput = `${header}.${payload}`;
+
+      // HMAC-SHA256 using Web Crypto API
+      const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(API_SECRET),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
+      const signature = btoa(String.fromCharCode(...new Uint8Array(sig)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+      return `${signingInput}.${signature}`;
+    }
+
+    async function connect() {
+      try {
+        log('Generating viewer token...');
+        const token = await generateToken();
+        log(`Identity: ${VIEWER_IDENTITY}`);
+
+        const room = new Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+
+        room.on(RoomEvent.Connected, () => {
+          log('Connected to room: ' + ROOM_NAME);
+          setStatus('Connected - waiting for stream...', 'connected');
+        });
+
+        room.on(RoomEvent.Disconnected, (reason) => {
+          log('Disconnected: ' + reason);
+          setStatus('Disconnected', 'disconnected');
+        });
+
+        room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          log(`Track subscribed: ${track.kind} from ${participant.identity}`);
+          if (track.kind === Track.Kind.Video) {
+            track.attach(videoEl);
+            setStatus(`Streaming from ${participant.identity}`, 'connected');
+            log('Video attached!');
+          }
+        });
+
+        room.on(RoomEvent.TrackUnsubscribed, (track) => {
+          log('Track unsubscribed');
+          track.detach(videoEl);
+          setStatus('Connected - stream ended', 'connecting');
+        });
+
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+          log(`Participant joined: ${participant.identity}`);
+        });
+
+        room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+          log(`Participant left: ${participant.identity}`);
+        });
+
+        log(`Connecting to ${WS_URL}...`);
+        setStatus('Connecting...', 'connecting');
+        await room.connect(WS_URL, token);
+
+        // Check if there are already participants with tracks
+        room.remoteParticipants.forEach((participant) => {
+          log(`Existing participant: ${participant.identity}`);
+          participant.trackPublications.forEach((pub) => {
+            if (pub.track && pub.track.kind === Track.Kind.Video) {
+              pub.track.attach(videoEl);
+              setStatus(`Streaming from ${participant.identity}`, 'connected');
+              log('Attached existing video track');
+            }
+          });
+        });
+
+      } catch (err) {
+        log('Error: ' + err.message);
+        setStatus('Error: ' + err.message, 'disconnected');
+      }
+    }
+
+    connect();
+  </script>
+</body>
+</html>

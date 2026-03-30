@@ -1,0 +1,217 @@
+=== service/ Internal Dependencies ===
+--- agent_dispatch_service.go imports from service/ ---
+32:	roomAllocator       RoomAllocator
+39:	roomAllocator RoomAllocator,
+
+--- agentservice.go imports from service/ ---
+
+--- auth.go imports from service/ ---
+
+--- auth_test.go imports from service/ ---
+
+--- basic_auth.go imports from service/ ---
+
+--- clients.go imports from service/ ---
+
+--- docker_test.go imports from service/ ---
+
+--- egress.go imports from service/ ---
+
+--- egressid.go imports from service/ ---
+
+--- errors.go imports from service/ ---
+
+--- ingress.go imports from service/ ---
+
+--- interfaces.go imports from service/ ---
+28://counterfeiter:generate . ObjectStore
+29:type ObjectStore interface {
+80://counterfeiter:generate . RoomAllocator
+81:type RoomAllocator interface {
+
+--- ioservice.go imports from service/ ---
+72:		rs := s.es.(*RedisStore)
+
+--- ioservice_ingress.go imports from service/ ---
+
+--- ioservice_sip.go imports from service/ ---
+
+--- ioservice_sip_test.go imports from service/ ---
+29:func ioStoreDocker(t testing.TB) (*service.IOInfoService, *service.RedisStore) {
+32:	rs := service.NewRedisStore(r)
+
+--- localstore.go imports from service/ ---
+28:var _ OSSServiceStore = (*LocalStore)(nil)
+31:type LocalStore struct {
+45:func NewLocalStore() *LocalStore {
+46:	return &LocalStore{
+56:func (s *LocalStore) StoreRoom(_ context.Context, room *hublive.Room, internal *hublive.RoomInternal) error {
+72:func (s *LocalStore) LoadRoom(_ context.Context, roomName hublive.RoomName, includeInternal bool) (*hublive.Room, *hublive.RoomInternal, error) {
+89:func (s *LocalStore) RoomExists(ctx context.Context, roomName hublive.RoomName) (bool, error) {
+99:func (s *LocalStore) ListRooms(_ context.Context, roomNames []hublive.RoomName) ([]*hublive.Room, error) {
+111:func (s *LocalStore) DeleteRoom(ctx context.Context, roomName hublive.RoomName) error {
+130:func (s *LocalStore) LockRoom(_ context.Context, _ hublive.RoomName, _ time.Duration) (string, error) {
+
+--- redisstore.go imports from service/ ---
+71:var _ OSSServiceStore = (*RedisStore)(nil)
+73:type RedisStore struct {
+80:func NewRedisStore(rc redis.UniversalClient) *RedisStore {
+86:	return &RedisStore{
+93:func (s *RedisStore) Start() error {
+119:func (s *RedisStore) Stop() {
+127:func (s *RedisStore) StoreRoom(_ context.Context, room *hublive.Room, internal *hublive.RoomInternal) error {
+159:func (s *RedisStore) LoadRoom(_ context.Context, roomName hublive.RoomName, includeInternal bool) (*hublive.Room, *hublive.RoomInternal, error) {
+200:func (s *RedisStore) RoomExists(ctx context.Context, roomName hublive.RoomName) (bool, error) {
+210:func (s *RedisStore) ListRooms(_ context.Context, roomNames []hublive.RoomName) ([]*hublive.Room, error) {
+
+--- redisstore_sip.go imports from service/ ---
+30:func (s *RedisStore) StoreSIPTrunk(ctx context.Context, info *hublive.SIPTrunkInfo) error {
+34:func (s *RedisStore) StoreSIPInboundTrunk(ctx context.Context, info *hublive.SIPInboundTrunkInfo) error {
+38:func (s *RedisStore) StoreSIPOutboundTrunk(ctx context.Context, info *hublive.SIPOutboundTrunkInfo) error {
+42:func (s *RedisStore) loadSIPLegacyTrunk(ctx context.Context, id string) (*hublive.SIPTrunkInfo, error) {
+46:func (s *RedisStore) loadSIPInboundTrunk(ctx context.Context, id string) (*hublive.SIPInboundTrunkInfo, error) {
+50:func (s *RedisStore) loadSIPOutboundTrunk(ctx context.Context, id string) (*hublive.SIPOutboundTrunkInfo, error) {
+54:func (s *RedisStore) LoadSIPTrunk(ctx context.Context, id string) (*hublive.SIPTrunkInfo, error) {
+76:func (s *RedisStore) LoadSIPInboundTrunk(ctx context.Context, id string) (*hublive.SIPInboundTrunkInfo, error) {
+92:func (s *RedisStore) LoadSIPOutboundTrunk(ctx context.Context, id string) (*hublive.SIPOutboundTrunkInfo, error) {
+108:func (s *RedisStore) DeleteSIPTrunk(ctx context.Context, id string) error {
+
+--- redisstore_sip_test.go imports from service/ ---
+
+--- redisstore_test.go imports from service/ ---
+35:func redisStoreDocker(t testing.TB) *service.RedisStore {
+36:	return service.NewRedisStore(redisClientDocker(t))
+39:func redisStore(t testing.TB) *service.RedisStore {
+40:	return service.NewRedisStore(redisClient(t))
+
+--- roomallocator.go imports from service/ ---
+33:type StandardRoomAllocator struct {
+37:	roomStore ObjectStore
+40:func NewRoomAllocator(conf *config.Config, router routing.Router, rs ObjectStore) (RoomAllocator, error) {
+46:	return &StandardRoomAllocator{
+54:func (r *StandardRoomAllocator) AutoCreateEnabled(context.Context) bool {
+60:func (r *StandardRoomAllocator) CreateRoom(ctx context.Context, req *hublive.CreateRoomRequest, isExplicit bool) (*hublive.Room, *hublive.RoomInternal, bool, error) {
+134:func (r *StandardRoomAllocator) SelectRoomNode(ctx context.Context, roomName hublive.RoomName, nodeID hublive.NodeID) error {
+175:func (r *StandardRoomAllocator) ValidateCreateRoom(ctx context.Context, roomName hublive.RoomName) error {
+204:func (r *StandardRoomAllocator) applyNamedRoomConfiguration(req *hublive.CreateRoomRequest) (*hublive.CreateRoomRequest, error) {
+
+--- roomallocator_test.go imports from service/ ---
+40:		ra, conf := newTestRoomAllocator(t, conf, node.Clone())
+63:		ra, _ := newTestRoomAllocator(t, conf, node.Clone())
+81:		ra, _ := newTestRoomAllocator(t, conf, node.Clone())
+88:func newTestRoomAllocator(t *testing.T, conf *config.Config, node *hublive.Node) (service.RoomAllocator, *config.Config) {
+89:	store := &servicefakes.FakeObjectStore{}
+95:	ra, err := service.NewRoomAllocator(conf, router, store)
+
+--- roommanager.go imports from service/ ---
+66:// RoomManager manages rooms and its interaction with participants.
+68:type RoomManager struct {
+76:	roomAllocator     RoomAllocator
+77:	roomManagerServer rpc.TypedRoomManagerServer
+79:	roomStore         ObjectStore
+103:	rpc.UnimplementedRoomManagerServer
+106:func NewLocalRoomManager(
+108:	roomStore ObjectStore,
+111:	roomAllocator RoomAllocator,
+120:) (*RoomManager, error) {
+
+--- roommanager_service.go imports from service/ ---
+27:	*RoomManager
+34:func newWhipService(rm *RoomManager) (*whipService, error) {
+40:		RoomManager:   rm,
+46:	pi, err := routing.ParticipantInitFromStartSession(req.StartSession, s.RoomManager.currentNode.Region())
+54:	if err = s.RoomManager.StartSession(
+65:	room := s.RoomManager.GetRoom(ctx, hublive.RoomName(req.StartSession.RoomName))
+151:	apiKey, _, err := s.RoomManager.getFirstKeyPair()
+153:		iceServers = s.RoomManager.iceServersForParticipant(
+256:	*RoomManager
+260:	room := r.RoomManager.GetRoom(ctx, hublive.RoomName(req.Room))
+
+--- roomservice.go imports from service/ ---
+37:	roomAllocator     RoomAllocator
+52:	roomAllocator RoomAllocator,
+
+--- roomservice_test.go imports from service/ ---
+109:	allocator := &servicefakes.FakeRoomAllocator{}
+136:	allocator *servicefakes.FakeRoomAllocator
+
+--- rtcservice.go imports from service/ ---
+50:type RTCService struct {
+52:	roomAllocator RoomAllocator
+63:func NewRTCService(
+65:	ra RoomAllocator,
+68:) *RTCService {
+69:	s := &RTCService{
+92:func (s *RTCService) SetupRoutes(mux *http.ServeMux) {
+99:func (s *RTCService) v0Validate(w http.ResponseWriter, r *http.Request) {
+109:func (s *RTCService) v1Validate(w http.ResponseWriter, r *http.Request) {
+135:func (s *RTCService) validateInternal(
+
+--- server.go imports from service/ ---
+51:	rtcService   *RTCService
+57:	roomManager  *RoomManager
+58:	signalServer *SignalServer
+73:	rtcService *RTCService,
+78:	roomManager *RoomManager,
+79:	signalServer *SignalServer,
+341:func (s *HubliveServer) RoomManager() *RoomManager {
+
+--- signal.go imports from service/ ---
+48:type SignalServer struct {
+49:	server rpc.TypedSignalServer
+53:func NewSignalServer(
+59:) (*SignalServer, error) {
+60:	s, err := rpc.NewTypedSignalServer(
+70:	return &SignalServer{s, nodeID}, nil
+73:func NewDefaultSignalServer(
+78:	roomManager *RoomManager,
+79:) (r *SignalServer, err error) {
+80:	return NewSignalServer(currentNode.NodeID(), currentNode.Region(), bus, config, &defaultSessionHandler{currentNode, router, roomManager})
+
+--- signal_test.go imports from service/ ---
+84:		server, err := service.NewSignalServer(hublive.NodeID("node1"), "region", bus, cfg, handler)
+136:		server, err := service.NewSignalServer(hublive.NodeID("node1"), "region", bus, cfg, handler)
+
+--- sip.go imports from service/ ---
+
+--- turn.go imports from service/ ---
+
+--- twirp.go imports from service/ ---
+
+--- twirp_test.go imports from service/ ---
+
+--- utils.go imports from service/ ---
+256:	roomAllocator RoomAllocator,
+
+--- utils_test.go imports from service/ ---
+
+--- whipservice.go imports from service/ ---
+51:	roomAllocator     RoomAllocator
+60:	roomAllocator RoomAllocator,
+
+--- wire.go imports from service/ ---
+52:		wire.Bind(new(ServiceStore), new(ObjectStore)),
+79:		NewRoomAllocator,
+81:		NewRTCService,
+89:		NewDefaultSignalServer,
+92:		routing.NewRoomManagerClient,
+101:		NewLocalRoomManager,
+121:		routing.NewRoomManagerClient,
+181:func createStore(rc redis.UniversalClient) ObjectStore {
+183:		return NewRedisStore(rc)
+185:	return NewLocalStore()
+
+--- wire_gen.go imports from service/ ---
+55:	roomManagerClient, err := routing.NewRoomManagerClient(clientParams, roomConfig)
+66:	roomAllocator, err := NewRoomAllocator(conf, router, objectStore)
+123:	rtcService := NewRTCService(conf, roomAllocator, router, telemetryService)
+145:	roomManager, err := NewLocalRoomManager(conf, objectStore, currentNode, router, roomAllocator, telemetryService, client, agentStore, rtcEgressLauncher, timedVersionGenerator, turnAuthHandler, messageBus, forwardStats)
+149:	signalServer, err := NewDefaultSignalServer(currentNode, messageBus, signalRelayConfig, router, roomManager)
+180:	roomManagerClient, err := routing.NewRoomManagerClient(clientParams, roomConfig)
+246:func createStore(rc redis.UniversalClient) ObjectStore {
+248:		return NewRedisStore(rc)
+250:	return NewLocalStore()
+260:func getEgressStore(s ObjectStore) EgressStore {
+
+--- wsprotocol.go imports from service/ ---
+

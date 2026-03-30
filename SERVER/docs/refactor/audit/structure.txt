@@ -1,0 +1,140 @@
+=== Package File Counts ===
+     31 pkg/service
+     29 pkg/rtc
+     15 pkg/rtc/types/typesfakes
+     14 pkg/sfu
+     13 pkg/sfu/buffer
+     10 pkg/telemetry/prometheus
+     10 pkg/sfu/videolayerselector
+      9 pkg/utils
+      9 pkg/service/servicefakes
+      9 pkg/rtc/signalling
+      9 pkg/routing
+      8 pkg/sfu/bwe/sendsidebwe
+      7 pkg/routing/selector
+      6 pkg/telemetry
+      6 pkg/sfu/rtpstats
+      6 pkg/sfu/pacer
+      6 pkg/rtc/dynacast
+      5 pkg/sfu/streamtracker
+      5 pkg/sfu/rtpextension/dependencydescriptor
+      5 pkg/routing/routingfakes
+      4 pkg/sfu/utils
+      4 pkg/sfu/ccutils
+      4 pkg/sfu/bwe/remotebwe
+      4 pkg/rtc/types
+      4 pkg/metric
+      4 pkg/clientconfiguration
+      3 pkg/sfu/videolayerselector/temporallayerselector
+      3 pkg/sfu/streamallocator
+      3 pkg/sfu/codecmunger
+      3 pkg/rtc/datatrack
+      3 pkg/agent
+      2 pkg/telemetry/telemetryfakes
+      2 pkg/sfu/interceptor
+      2 pkg/sfu/datachannel
+      2 pkg/sfu/connectionquality
+      2 pkg/sfu/bwe
+      2 pkg/rtc/transport
+      2 pkg/rtc/supervisor
+      1 pkg/testutils
+      1 pkg/sfu/testutils
+      1 pkg/sfu/rtpextension/playoutdelay
+      1 pkg/sfu/rtpextension/abscapturetime
+      1 pkg/sfu/packettrailer
+      1 pkg/sfu/audio
+      1 pkg/rtc/transport/transportfakes
+      1 pkg/config/configtest
+      1 pkg/config
+      1 pkg/agent/testutils
+
+=== God Object Line Counts ===
+  4250 pkg/rtc/participant.go
+  2370 pkg/rtc/room.go
+  3232 pkg/rtc/transport.go
+  1196 pkg/service/roommanager.go
+ 11048 total
+
+=== pkg/service/ files ===
+-rw-r--r-- 1 Admin 197121  3783 Mar 29 20:32 pkg/service/agent_dispatch_service.go
+-rw-r--r-- 1 Admin 197121 14451 Mar 29 20:32 pkg/service/agentservice.go
+-rw-r--r-- 1 Admin 197121  6081 Mar 29 20:32 pkg/service/auth.go
+-rw-r--r-- 1 Admin 197121  2191 Mar 29 20:32 pkg/service/auth_test.go
+-rw-r--r-- 1 Admin 197121   649 Mar 29 20:32 pkg/service/basic_auth.go
+-rw-r--r-- 1 Admin 197121  1283 Mar 29 20:32 pkg/service/clients.go
+-rw-r--r-- 1 Admin 197121  1736 Mar 29 20:32 pkg/service/docker_test.go
+-rw-r--r-- 1 Admin 197121  9702 Mar 29 20:32 pkg/service/egress.go
+-rw-r--r-- 1 Admin 197121  1130 Mar 29 20:32 pkg/service/egressid.go
+-rw-r--r-- 1 Admin 197121  3919 Mar 29 20:32 pkg/service/errors.go
+-rw-r--r-- 1 Admin 197121 10718 Mar 29 20:32 pkg/service/ingress.go
+-rw-r--r-- 1 Admin 197121  5723 Mar 29 20:32 pkg/service/interfaces.go
+-rw-r--r-- 1 Admin 197121  4757 Mar 29 20:32 pkg/service/ioservice.go
+-rw-r--r-- 1 Admin 197121  3362 Mar 29 20:32 pkg/service/ioservice_ingress.go
+-rw-r--r-- 1 Admin 197121  5856 Mar 29 20:32 pkg/service/ioservice_sip.go
+-rw-r--r-- 1 Admin 197121  3289 Mar 29 20:32 pkg/service/ioservice_sip_test.go
+-rw-r--r-- 1 Admin 197121  8317 Mar 29 20:32 pkg/service/localstore.go
+-rw-r--r-- 1 Admin 197121 26499 Mar 29 20:32 pkg/service/redisstore.go
+-rw-r--r-- 1 Admin 197121  8100 Mar 29 20:32 pkg/service/redisstore_sip.go
+-rw-r--r-- 1 Admin 197121 10588 Mar 29 20:32 pkg/service/redisstore_sip_test.go
+-rw-r--r-- 1 Admin 197121 10463 Mar 29 20:32 pkg/service/redisstore_test.go
+-rw-r--r-- 1 Admin 197121  6906 Mar 29 20:32 pkg/service/roomallocator.go
+-rw-r--r-- 1 Admin 197121  3156 Mar 29 20:32 pkg/service/roomallocator_test.go
+-rw-r--r-- 1 Admin 197121 38150 Mar 29 20:32 pkg/service/roommanager.go
+-rw-r--r-- 1 Admin 197121  9019 Mar 29 20:32 pkg/service/roommanager_service.go
+-rw-r--r-- 1 Admin 197121 13695 Mar 29 20:32 pkg/service/roomservice.go
+-rw-r--r-- 1 Admin 197121  3992 Mar 29 20:32 pkg/service/roomservice_test.go
+-rw-r--r-- 1 Admin 197121 19128 Mar 29 20:32 pkg/service/rtcservice.go
+-rw-r--r-- 1 Admin 197121 10610 Mar 29 20:32 pkg/service/server.go
+-rw-r--r-- 1 Admin 197121  6096 Mar 29 20:32 pkg/service/signal.go
+-rw-r--r-- 1 Admin 197121  4788 Mar 29 20:32 pkg/service/signal_test.go
+-rw-r--r-- 1 Admin 197121 23058 Mar 29 20:32 pkg/service/sip.go
+-rw-r--r-- 1 Admin 197121  6284 Mar 29 20:32 pkg/service/turn.go
+-rw-r--r-- 1 Admin 197121 10834 Mar 29 20:32 pkg/service/twirp.go
+-rw-r--r-- 1 Admin 197121   951 Mar 29 20:32 pkg/service/twirp_test.go
+-rw-r--r-- 1 Admin 197121 10933 Mar 29 20:32 pkg/service/utils.go
+-rw-r--r-- 1 Admin 197121  1885 Mar 29 20:32 pkg/service/utils_test.go
+-rw-r--r-- 1 Admin 197121 17218 Mar 29 20:32 pkg/service/whipservice.go
+-rw-r--r-- 1 Admin 197121  7646 Mar 29 20:32 pkg/service/wire.go
+-rw-r--r-- 1 Admin 197121 10942 Mar 29 20:32 pkg/service/wire_gen.go
+-rw-r--r-- 1 Admin 197121  4767 Mar 29 20:32 pkg/service/wsprotocol.go
+
+=== pkg/rtc/ top-level files ===
+-rw-r--r-- 1 Admin 197121   4054 Mar 29 20:32 pkg/rtc/clientinfo.go
+-rw-r--r-- 1 Admin 197121   1543 Mar 29 20:32 pkg/rtc/clientinfo_test.go
+-rw-r--r-- 1 Admin 197121   6076 Mar 29 20:32 pkg/rtc/config.go
+-rw-r--r-- 1 Admin 197121   2979 Mar 29 20:32 pkg/rtc/datadowntrack.go
+-rw-r--r-- 1 Admin 197121   4443 Mar 29 20:32 pkg/rtc/datatrack.go
+-rw-r--r-- 1 Admin 197121   4872 Mar 29 20:32 pkg/rtc/egress.go
+-rw-r--r-- 1 Admin 197121   2205 Mar 29 20:32 pkg/rtc/errors.go
+-rw-r--r-- 1 Admin 197121   5944 Mar 29 20:32 pkg/rtc/mediaengine.go
+-rw-r--r-- 1 Admin 197121   1839 Mar 29 20:32 pkg/rtc/mediaengine_test.go
+-rw-r--r-- 1 Admin 197121   2451 Mar 29 20:32 pkg/rtc/medialossproxy.go
+-rw-r--r-- 1 Admin 197121  21033 Mar 29 20:32 pkg/rtc/mediatrack.go
+-rw-r--r-- 1 Admin 197121   6481 Mar 29 20:32 pkg/rtc/mediatrack_test.go
+-rw-r--r-- 1 Admin 197121  33077 Mar 29 20:32 pkg/rtc/mediatrackreceiver.go
+-rw-r--r-- 1 Admin 197121  11718 Mar 29 20:32 pkg/rtc/mediatracksubscriptions.go
+-rw-r--r-- 1 Admin 197121   1691 Mar 29 20:32 pkg/rtc/migrationdatacache.go
+-rw-r--r-- 1 Admin 197121   1064 Mar 29 20:32 pkg/rtc/migrationdatacache_test.go
+-rw-r--r-- 1 Admin 197121 128049 Mar 29 20:32 pkg/rtc/participant.go
+-rw-r--r-- 1 Admin 197121   4981 Mar 29 20:32 pkg/rtc/participant_data_track.go
+-rw-r--r-- 1 Admin 197121  26671 Mar 29 20:32 pkg/rtc/participant_internal_test.go
+-rw-r--r-- 1 Admin 197121  10795 Mar 29 20:32 pkg/rtc/participant_sdp.go
+-rw-r--r-- 1 Admin 197121  13071 Mar 29 20:32 pkg/rtc/participant_signal.go
+-rw-r--r-- 1 Admin 197121  71173 Mar 29 20:32 pkg/rtc/room.go
+-rw-r--r-- 1 Admin 197121  27460 Mar 29 20:32 pkg/rtc/room_test.go
+-rw-r--r-- 1 Admin 197121   6854 Mar 29 20:32 pkg/rtc/roomtrackmanager.go
+-rw-r--r-- 1 Admin 197121   7542 Mar 29 20:32 pkg/rtc/signalanddatastats.go
+-rw-r--r-- 1 Admin 197121  15014 Mar 29 20:32 pkg/rtc/subscribedtrack.go
+-rw-r--r-- 1 Admin 197121  43519 Mar 29 20:32 pkg/rtc/subscriptionmanager.go
+-rw-r--r-- 1 Admin 197121  18446 Mar 29 20:32 pkg/rtc/subscriptionmanager_test.go
+-rw-r--r-- 1 Admin 197121   2733 Mar 29 20:32 pkg/rtc/testutils.go
+-rw-r--r-- 1 Admin 197121  94937 Mar 29 20:32 pkg/rtc/transport.go
+-rw-r--r-- 1 Admin 197121  20549 Mar 29 20:32 pkg/rtc/transport_test.go
+-rw-r--r-- 1 Admin 197121  32075 Mar 29 20:32 pkg/rtc/transportmanager.go
+-rw-r--r-- 1 Admin 197121   2840 Mar 29 20:32 pkg/rtc/updatatrackmanager.go
+-rw-r--r-- 1 Admin 197121  12079 Mar 29 20:32 pkg/rtc/uptrackmanager.go
+-rw-r--r-- 1 Admin 197121  10914 Mar 29 20:32 pkg/rtc/uptrackmanager_test.go
+-rw-r--r-- 1 Admin 197121   1366 Mar 29 20:32 pkg/rtc/user_packet_deduper.go
+-rw-r--r-- 1 Admin 197121   5281 Mar 29 20:32 pkg/rtc/utils.go
+-rw-r--r-- 1 Admin 197121   2147 Mar 29 20:32 pkg/rtc/utils_test.go
+-rw-r--r-- 1 Admin 197121  15461 Mar 29 20:32 pkg/rtc/wrappedreceiver.go

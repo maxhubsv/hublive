@@ -1,0 +1,20 @@
+# HubLive Server connection
+hublive:
+  url: "ws://localhost:7880"
+  api_key: "devkey"
+  api_secret: "secret"
+
+# Room settings
+room:
+  name: "screen-share"
+
+# Agent identity
+agent:
+  identity: "agent-cpp-001"
+  name: "Screen Agent C++"
+
+# Screen capture settings
+capture:
+  fps: 15
+  monitor: 1
+  scale: 1.0

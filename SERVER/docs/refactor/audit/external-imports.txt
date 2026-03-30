@@ -1,0 +1,141 @@
+=== External Import Risk ===
+--- Exported types in pkg/service/ ---
+pkg/service/agent_dispatch_service.go:29:type AgentDispatchService struct {
+pkg/service/agentservice.go:45:type AgentSocketUpgrader struct {
+pkg/service/agentservice.go:131:type AgentService struct {
+pkg/service/agentservice.go:137:type AgentHandler struct {
+pkg/service/auth.go:50:type APIKeyAuthMiddleware struct {
+pkg/service/clients.go:27:type IOClient interface {
+pkg/service/egress.go:37:type EgressService struct {
+pkg/service/egress.go:264:type LayoutMetadata struct {
+pkg/service/ingress.go:33:type IngressLauncher interface {
+pkg/service/ingress.go:37:type IngressService struct {
+pkg/service/interfaces.go:29:type ObjectStore interface {
+pkg/service/interfaces.go:45:type ServiceStore interface {
+pkg/service/interfaces.go:54:type OSSServiceStore interface {
+pkg/service/interfaces.go:62:type EgressStore interface {
+pkg/service/interfaces.go:70:type IngressStore interface {
+pkg/service/interfaces.go:81:type RoomAllocator interface {
+pkg/service/interfaces.go:89:type SIPStore interface {
+pkg/service/interfaces.go:108:type AgentStore interface {
+pkg/service/ioservice.go:31:type IOInfoService struct {
+pkg/service/localstore.go:31:type LocalStore struct {
+pkg/service/redisstore.go:73:type RedisStore struct {
+pkg/service/roomallocator.go:33:type StandardRoomAllocator struct {
+pkg/service/roommanager.go:68:type RoomManager struct {
+pkg/service/roomservice.go:33:type RoomService struct {
+pkg/service/rtcservice.go:50:type RTCService struct {
+pkg/service/server.go:48:type HubliveServer struct {
+pkg/service/signal.go:36:type SessionHandler interface {
+pkg/service/signal.go:48:type SignalServer struct {
+pkg/service/sip.go:38:type SIPService struct {
+pkg/service/turn.go:156:type TURNAuthHandler struct {
+pkg/service/utils.go:236:type ValidateConnectRequestParams struct {
+pkg/service/utils.go:243:type ValidateConnectRequestResult struct {
+pkg/service/whipservice.go:46:type WHIPService struct {
+pkg/service/wsprotocol.go:39:type WSSignalConnection struct {
+
+--- Exported types in pkg/rtc/ (top-level) ---
+pkg/rtc/clientinfo.go:24:type ClientInfo struct {
+pkg/rtc/config.go:33:type WebRTCConfig struct {
+pkg/rtc/config.go:42:type ReceiverConfig struct {
+pkg/rtc/config.go:47:type RTPHeaderExtensionConfig struct {
+pkg/rtc/config.go:52:type RTCPFeedbackConfig struct {
+pkg/rtc/config.go:57:type DirectionConfig struct {
+pkg/rtc/datadowntrack.go:30:type DataDownTrackParams struct {
+pkg/rtc/datadowntrack.go:38:type DataDownTrack struct {
+pkg/rtc/datatrack.go:36:type DataTrackParams struct {
+pkg/rtc/datatrack.go:42:type DataTrack struct {
+pkg/rtc/egress.go:30:type EgressLauncher interface {
+pkg/rtc/medialossproxy.go:33:type MediaLossProxyParams struct {
+pkg/rtc/medialossproxy.go:37:type MediaLossProxy struct {
+pkg/rtc/mediatrack.go:47:type MediaTrack struct {
+pkg/rtc/mediatrack.go:77:type MediaTrackParams struct {
+pkg/rtc/mediatrackreceiver.go:119:type MediaTrackReceiverParams struct {
+pkg/rtc/mediatrackreceiver.go:134:type MediaTrackReceiver struct {
+pkg/rtc/mediatracksubscriptions.go:38:type MediaTrackSubscriptions struct {
+pkg/rtc/mediatracksubscriptions.go:49:type MediaTrackSubscriptionsParams struct {
+pkg/rtc/migrationdatacache.go:9:type MigrationDataCacheState int
+pkg/rtc/migrationdatacache.go:17:type MigrationDataCache struct {
+pkg/rtc/participant.go:163:type ParticipantParams struct {
+pkg/rtc/participant.go:232:type ParticipantImpl struct {
+pkg/rtc/participant.go:1828:type AnyTransportHandler struct {
+pkg/rtc/participant.go:1847:type PublisherTransportHandler struct {
+pkg/rtc/participant.go:1889:type SubscriberTransportHandler struct {
+pkg/rtc/participant.go:1911:type PrimaryTransportHandler struct {
+pkg/rtc/room.go:74:type AgentStore interface {
+pkg/rtc/room.go:93:type Room struct {
+pkg/rtc/room.go:156:type ParticipantOptions struct {
+pkg/rtc/room.go:2184:type ParticipantUpdate struct {
+pkg/rtc/roomtrackmanager.go:29:type RoomTrackManager struct {
+pkg/rtc/roomtrackmanager.go:39:type TrackInfo struct {
+pkg/rtc/roomtrackmanager.go:45:type DataTrackInfo struct {
+pkg/rtc/signalanddatastats.go:33:type BytesTrackType string
+pkg/rtc/signalanddatastats.go:42:type TrafficTotals struct {
+pkg/rtc/signalanddatastats.go:53:type BytesTrackStats struct {
+pkg/rtc/signalanddatastats.go:177:type BytesSignalStats struct {
+pkg/rtc/subscribedtrack.go:45:type SubscribedTrackParams struct {
+pkg/rtc/subscribedtrack.go:60:type SubscribedTrack struct {
+pkg/rtc/subscriptionmanager.go:52:type SubscriptionManagerParams struct {
+pkg/rtc/subscriptionmanager.go:69:type SubscriptionManager struct {
+pkg/rtc/transport.go:195:type PCTransport struct {
+pkg/rtc/transport.go:289:type TransportParams struct {
+pkg/rtc/transportmanager.go:58:type TransportManagerTransportHandler struct {
+pkg/rtc/transportmanager.go:74:type TransportManagerParams struct {
+pkg/rtc/transportmanager.go:103:type TransportManager struct {
+pkg/rtc/updatatrackmanager.go:27:type UpDataTrackManagerParams struct {
+pkg/rtc/updatatrackmanager.go:32:type UpDataTrackManager struct {
+pkg/rtc/uptrackmanager.go:33:type UpTrackManagerParams struct {
+pkg/rtc/uptrackmanager.go:39:type UpTrackManager struct {
+pkg/rtc/user_packet_deduper.go:28:type UserPacketDeduper struct {
+pkg/rtc/wrappedreceiver.go:37:type WrappedReceiverParams struct {
+pkg/rtc/wrappedreceiver.go:47:type WrappedReceiver struct {
+pkg/rtc/wrappedreceiver.go:184:type DummyReceiver struct {
+pkg/rtc/wrappedreceiver.go:521:type DummyRedReceiver struct {
+
+--- Exported types in pkg/rtc/types/ ---
+pkg/rtc/types/ice.go:33:type ICEConnectionType int
+pkg/rtc/types/ice.go:76:type ICECandidateExtended struct {
+pkg/rtc/types/ice.go:87:type ICEConnectionInfo struct {
+pkg/rtc/types/ice.go:109:type ICEConnectionDetails struct {
+pkg/rtc/types/interfaces.go:44:type WebsocketClient interface {
+pkg/rtc/types/interfaces.go:52:type AddSubscriberParams struct {
+pkg/rtc/types/interfaces.go:59:type MigrateState int32
+pkg/rtc/types/interfaces.go:82:type SubscribedCodecQuality struct {
+pkg/rtc/types/interfaces.go:89:type ParticipantCloseReason int
+pkg/rtc/types/interfaces.go:230:type SignallingCloseReason int
+pkg/rtc/types/interfaces.go:284:type Participant interface {
+pkg/rtc/types/interfaces.go:344:type AddTrackParams struct {
+pkg/rtc/types/interfaces.go:349:type MoveToRoomParams struct {
+pkg/rtc/types/interfaces.go:356:type DataMessageCache struct {
+pkg/rtc/types/interfaces.go:364:type LocalParticipantHelper interface {
+pkg/rtc/types/interfaces.go:375:type LocalParticipant interface {
+pkg/rtc/types/interfaces.go:560:type ParticipantListener interface {
+pkg/rtc/types/interfaces.go:573:type NullParticipantListener struct{}
+pkg/rtc/types/interfaces.go:587:type LocalParticipantListener interface {
+pkg/rtc/types/interfaces.go:611:type NullLocalParticipantListener struct {
+pkg/rtc/types/interfaces.go:646:type ParticipantTelemetryListener interface {
+pkg/rtc/types/interfaces.go:666:type NullParticipantTelemetryListener struct{}
+pkg/rtc/types/interfaces.go:703:type Room interface {
+pkg/rtc/types/interfaces.go:722:type MediaTrack interface {
+pkg/rtc/types/interfaces.go:773:type LocalMediaTrack interface {
+pkg/rtc/types/interfaces.go:795:type DataTrack interface {
+pkg/rtc/types/interfaces.go:817:type DataDownTrack interface {
+pkg/rtc/types/interfaces.go:827:type DataTrackSender interface {
+pkg/rtc/types/interfaces.go:834:type DataTrackTransport interface {
+pkg/rtc/types/interfaces.go:839:type SubscribedTrack interface {
+pkg/rtc/types/interfaces.go:862:type ChangeNotifier interface {
+pkg/rtc/types/interfaces.go:869:type MediaResolverResult struct {
+pkg/rtc/types/interfaces.go:879:type DataResolverResult struct {
+pkg/rtc/types/interfaces.go:888:type MediaTrackResolver func(LocalParticipant, hublive.TrackID) MediaResolverResult
+pkg/rtc/types/interfaces.go:891:type DataTrackResolver func(LocalParticipant, hublive.TrackID) DataResolverResult
+pkg/rtc/types/interfaces.go:894:type OperationMonitorEvent int
+pkg/rtc/types/interfaces.go:921:type OperationMonitorData any
+pkg/rtc/types/interfaces.go:923:type OperationMonitor interface {
+pkg/rtc/types/protocol_version.go:17:type ProtocolVersion int
+pkg/rtc/types/trafficstats.go:23:type TrafficStats struct {
+pkg/rtc/types/trafficstats.go:33:type TrafficTypeStats struct {
+pkg/rtc/types/trafficstats.go:39:type TrafficLoad struct {
+
+--- go.mod module path ---
+module github.com/hublive/hublive-server

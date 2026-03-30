@@ -1,0 +1,58 @@
+=== Sentinel Errors ===
+--- pkg/service/ sentinel errors ---
+pkg/service/agentservice.go:505:		return nil, errors.New("no workers available")
+pkg/service/agentservice.go:518:		return nil, errors.New("no workers with sufficient capacity")
+pkg/service/auth.go:43:	ErrPermissionDenied          = errors.New("permissions denied")
+pkg/service/auth.go:44:	ErrMissingAuthorization      = errors.New("invalid authorization header. Must start with " + bearerPrefix)
+pkg/service/auth.go:45:	ErrInvalidAuthorizationToken = errors.New("invalid authorization token")
+pkg/service/auth.go:46:	ErrInvalidAPIKey             = errors.New("invalid API key")
+pkg/service/auth.go:89:			HandleError(w, r, http.StatusUnauthorized, errors.New("invalid API key: "+v.APIKey()))
+pkg/service/auth.go:95:			HandleError(w, r, http.StatusUnauthorized, errors.New("invalid token: "+authToken+", error: "+err.Error()))
+pkg/service/ioservice_ingress.go:61:		err = errors.New("request needs to specify either IngressId or StreamKey")
+pkg/service/redisstore.go:524:		err = errors.New("invalid egressEnded value")
+pkg/service/redisstore.go:544:		return errors.New("Missing IngressId")
+pkg/service/redisstore.go:547:		return errors.New("Missing StreamKey")
+pkg/service/redisstore.go:621:		return errors.New("Missing IngressId")
+pkg/service/redisstore.go:948:		return errors.New("id is not set")
+pkg/service/roommanager.go:346:				return errors.New("could not restart closed participant")
+pkg/service/roommanager.go:404:		return errors.New("could not restart participant")
+pkg/service/roommanager.go:865:	return nil, errors.New("not implemented")
+pkg/service/roommanager.go:869:	return nil, errors.New("not implemented")
+pkg/service/roommanager.go:1147:	return "", "", errors.New("no API keys configured")
+pkg/service/roommanager_service.go:279:			fmt.Errorf("ice session mismatch, expected: %s, got: %s", iceSessionID, req.IceSessionId),
+pkg/service/roomservice.go:84:		return nil, fmt.Errorf("%w: max length %d", ErrRoomNameExceedsLimits, s.limitConf.MaxRoomNameLength)
+pkg/service/rtcservice.go:148:			return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("join_request is required")
+pkg/service/rtcservice.go:158:					return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("cannot decode attributes")
+pkg/service/rtcservice.go:168:			return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("cannot base64 decode wrapped join request")
+pkg/service/rtcservice.go:172:				return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("cannot unmarshal wrapped join request")
+pkg/service/rtcservice.go:178:					return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("cannot unmarshal join request")
+pkg/service/rtcservice.go:187:					return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("cannot read decompressed join request")
+pkg/service/rtcservice.go:191:					return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("cannot unmarshal join request")
+pkg/service/rtcservice.go:652:			return nil, errors.New("timed out while waiting for signal response")
+pkg/service/rtcservice.go:655:				return nil, errors.New("connection closed by media")
+
+--- pkg/rtc/ sentinel errors ---
+
+--- Custom error types ---
+
+--- Cross-package error references ---
+pkg/rtc/participant.go:3695:	case errors.Is(err, webrtc.ErrUnsupportedCodec):
+pkg/rtc/transport.go:2569:		if errors.Is(err, webrtc.ErrConnectionClosed) {
+pkg/rtc/transport.go:2585:		if errors.Is(err, webrtc.ErrConnectionClosed) {
+pkg/rtc/transport.go:2676:		if errors.Is(err, webrtc.ErrConnectionClosed) {
+pkg/rtc/transport.go:2718:		if errors.Is(err, webrtc.ErrConnectionClosed) {
+pkg/rtc/transport.go:2874:		if !errors.Is(err, webrtc.ErrUnsupportedCodec) {
+pkg/service/agentservice.go:75:		HandleError(w, r, http.StatusUnauthorized, rtc.ErrPermissionDenied)
+pkg/service/agentservice.go:422:			retry := utils.ErrorIsOneOf(err, agent.ErrWorkerNotAvailable, agent.ErrWorkerClosed)
+pkg/service/utils.go:263:		return res, http.StatusUnauthorized, rtc.ErrPermissionDenied
+pkg/service/utils.go:300:			return res, http.StatusUnauthorized, rtc.ErrPermissionDenied
+pkg/service/utils.go:321:				return res, http.StatusServiceUnavailable, rtc.ErrLimitExceeded
+pkg/service/utils.go:336:			return res, http.StatusUnauthorized, rtc.ErrPermissionDenied
+pkg/service/utils.go:345:			return res, http.StatusUnauthorized, rtc.ErrPermissionDenied
+pkg/service/whipservice.go:125:		return nil, http.StatusUnauthorized, rtc.ErrPermissionDenied
+pkg/service/whipservice.go:343:				case rtc.ErrInvalidSDPFragment.Error(), rtc.ErrMidMismatch.Error(), rtc.ErrICECredentialMismatch.Error():
+pkg/service/whipservice.go:395:				case rtc.ErrInvalidSDPFragment.Error():
+pkg/service/whipservice.go:442:		s.handleError("Patch", w, r, http.StatusUnauthorized, rtc.ErrPermissionDenied)
+pkg/service/whipservice.go:482:		s.handleError("Delete", w, r, http.StatusUnauthorized, rtc.ErrPermissionDenied)
+pkg/sfu/downtrack.go:533:		err := webrtc.ErrUnsupportedCodec
+pkg/sfu/utils/helpers.go:47:	return webrtc.RTPCodecParameters{}, webrtc.ErrCodecNotFound
