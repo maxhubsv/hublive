@@ -1,0 +1,59 @@
+{
+  "app": {
+    "title": "HubLive",
+    "loading": "加载中...",
+    "error": "发生错误",
+    "retry": "重试",
+    "noData": "暂无数据",
+    "save": "保存",
+    "cancel": "取消",
+    "confirm": "确认",
+    "delete": "删除"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出登录",
+    "email": "邮箱",
+    "password": "密码",
+    "loginButton": "登录",
+    "loginError": "登录失败"
+  },
+  "sidebar": {
+    "dashboard": "仪表板",
+    "streaming": "直播",
+    "settings": "设置"
+  },
+  "header": {
+    "search": "搜索...",
+    "language": "语言",
+    "theme": "主题"
+  },
+  "dashboard": {
+    "title": "仪表板",
+    "welcome": "欢迎使用 HubLive"
+  },
+  "stream": {
+    "title": "直播",
+    "connect": "连接",
+    "disconnect": "断开连接",
+    "connecting": "连接中...",
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "error": "连接错误",
+    "noStream": "暂无直播流"
+  },
+  "test": {
+    "title": "系统测试页面",
+    "subtitle": "验证所有组件是否正常工作",
+    "routingWorks": "路由正常",
+    "i18nWorks": "国际化正常",
+    "themeWorks": "主题正常",
+    "componentsWork": "组件正常",
+    "currentLocale": "当前语言",
+    "switchLocale": "切换语言",
+    "navigateTo": "导航到",
+    "description": "点击链接测试SPA路由",
+    "colorPalette": "设计系统调色板",
+    "buttonVariants": "按钮变体"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "app": {
+    "title": "HubLive",
+    "loading": "Đang tải...",
+    "error": "Đã xảy ra lỗi",
+    "retry": "Thử lại",
+    "noData": "Không có dữ liệu",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "delete": "Xóa"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "loginButton": "Đăng nhập",
+    "loginError": "Đăng nhập thất bại"
+  },
+  "sidebar": {
+    "dashboard": "Bảng điều khiển",
+    "streaming": "Phát trực tiếp",
+    "settings": "Cài đặt"
+  },
+  "header": {
+    "search": "Tìm kiếm...",
+    "language": "Ngôn ngữ",
+    "theme": "Giao diện"
+  },
+  "dashboard": {
+    "title": "Bảng điều khiển",
+    "welcome": "Chào mừng đến với HubLive"
+  },
+  "stream": {
+    "title": "Phát trực tiếp",
+    "connect": "Kết nối",
+    "disconnect": "Ngắt kết nối",
+    "connecting": "Đang kết nối...",
+    "connected": "Đã kết nối",
+    "disconnected": "Đã ngắt",
+    "error": "Lỗi kết nối",
+    "noStream": "Không có luồng nào"
+  },
+  "test": {
+    "title": "Trang kiểm tra hệ thống",
+    "subtitle": "Xác minh tất cả các thành phần hoạt động chính xác",
+    "routingWorks": "Routing hoạt động",
+    "i18nWorks": "Đa ngôn ngữ hoạt động",
+    "themeWorks": "Theme hoạt động",
+    "componentsWork": "Components hoạt động",
+    "currentLocale": "Ngôn ngữ hiện tại",
+    "switchLocale": "Chuyển ngôn ngữ",
+    "navigateTo": "Điều hướng đến",
+    "description": "Nhấn vào các liên kết để kiểm tra routing SPA",
+    "colorPalette": "Bảng màu Design System",
+    "buttonVariants": "Các biến thể Button"
+  }
+}

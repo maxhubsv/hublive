@@ -1,0 +1,59 @@
+{
+  "app": {
+    "title": "HubLive",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "noData": "No data",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "loginButton": "Sign In",
+    "loginError": "Login failed"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "streaming": "Streaming",
+    "settings": "Settings"
+  },
+  "header": {
+    "search": "Search...",
+    "language": "Language",
+    "theme": "Theme"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to HubLive"
+  },
+  "stream": {
+    "title": "Streaming",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "error": "Connection error",
+    "noStream": "No streams available"
+  },
+  "test": {
+    "title": "System Test Page",
+    "subtitle": "Verify all components are working correctly",
+    "routingWorks": "Routing works",
+    "i18nWorks": "Internationalization works",
+    "themeWorks": "Theme works",
+    "componentsWork": "Components work",
+    "currentLocale": "Current locale",
+    "switchLocale": "Switch language",
+    "navigateTo": "Navigate to",
+    "description": "Click the links to test SPA routing",
+    "colorPalette": "Design System Color Palette",
+    "buttonVariants": "Button Variants"
+  }
+}

@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Colors ── */
+  --color-bg-primary: #0A0A0B;
+  --color-bg-secondary: #141416;
+  --color-bg-tertiary: #1C1C1F;
+  --color-text-primary: #FAFAFA;
+  --color-text-secondary: #A0A0A8;
+  --color-accent: #3B82F6;
+  --color-success: #22C55E;
+  --color-danger: #EF4444;
+  --color-warning: #F59E0B;
+
+  /* ── Typography ── */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* ── Layout ── */
+  --width-sidebar: 16rem;        /* w-sidebar = 256px */
+  --height-header: 3.5rem;       /* h-header  = 56px  */
+
+  /* ── Spacing scale ── */
+  --spacing-page: 1.5rem;        /* p-page    = 24px  (main content padding) */
+  --spacing-section: 1rem;       /* gap/p     = 16px  (card padding, grid gap) */
+  --spacing-element: 0.5rem;     /* gap       = 8px   (between elements) */
+  --spacing-tight: 0.375rem;     /* gap       = 6px   (compact spacing) */
+
+  /* ── Component sizes ── */
+  --size-icon-sm: 1rem;          /* 16px  nav icons */
+  --size-icon-md: 2rem;          /* 32px  badge/logo icons */
+  --size-icon-lg: 2.5rem;        /* 40px  auth logo */
+  --size-swatch: 1.75rem;        /* 28px  color swatch */
+  --size-spinner: 2rem;          /* 32px  loading spinner */
+
+  /* ── Border radius ── */
+  --radius-sm: 0.25rem;          /* 4px   small elements */
+  --radius-md: 0.375rem;         /* 6px   buttons, inputs */
+  --radius-lg: 0.5rem;           /* 8px   cards, modals */
+  --radius-full: 9999px;         /* pill  badges, spinners */
+
+  /* ── Font sizes ── */
+  --text-page-title: 1.5rem;     /* 24px  page headings */
+  --text-section-title: 1.125rem;/* 18px  section headings */
+  --text-body: 0.875rem;         /* 14px  body text, labels */
+  --text-caption: 0.75rem;       /* 12px  captions, badges */
+  --text-micro: 0.625rem;        /* 10px  hex codes, tiny labels */
+}
+
+@layer base {
+  :root {
+    --bg-primary: #0A0A0B;
+    --bg-secondary: #141416;
+    --bg-tertiary: #1C1C1F;
+    --text-primary: #FAFAFA;
+    --text-secondary: #A0A0A8;
+    --accent: #3B82F6;
+    --success: #22C55E;
+    --danger: #EF4444;
+    --warning: #F59E0B;
+  }
+
+  * {
+    border-color: var(--bg-tertiary);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
