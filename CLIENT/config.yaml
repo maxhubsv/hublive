@@ -18,3 +18,16 @@ capture:
   fps: 15
   monitor: 1
   scale: 1.0
+
+# Audio settings
+audio:
+  system_enabled: true
+  mic_enabled: true
+  system_gain: 0.8
+  mic_gain: 1.0
+
+# Remote control settings
+control:
+  enabled: true
+  mouse: true
+  keyboard: true

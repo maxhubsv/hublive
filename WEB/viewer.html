@@ -10,8 +10,21 @@
   .connecting { background: #e2a03f; color: #000; }
   .connected { background: #27ae60; color: #fff; }
   .disconnected { background: #c0392b; color: #fff; }
-  #video-container { margin: 20px; border: 2px solid #333; border-radius: 8px; overflow: hidden; background: #000; }
+  #controls-bar { display: flex; gap: 12px; margin: 8px 0; align-items: center; font-size: 0.85em; }
+  #controls-bar label { cursor: pointer; user-select: none; }
+  #controls-bar input[type="checkbox"] { margin-right: 4px; }
+  #video-container {
+    margin: 10px; border: 2px solid #333; border-radius: 8px; overflow: hidden;
+    background: #000; position: relative; outline: none;
+  }
+  #video-container:focus { border-color: #27ae60; }
+  #video-container.control-active { border-color: #e2a03f; cursor: none; }
   video { display: block; max-width: 90vw; max-height: 75vh; }
+  #control-hint {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 4px;
+    font-size: 0.75em; pointer-events: none; transition: opacity 0.3s;
+  }
   #log { width: 80%; max-height: 150px; overflow-y: auto; background: #111; padding: 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 20px; }
   .log-entry { margin: 2px 0; }
 </style>
@@ -19,14 +32,20 @@
 <body>
   <h1>HubLive C++ Agent Viewer</h1>
   <div id="status" class="connecting">Connecting...</div>
-  <div id="video-container">
+  <div id="controls-bar">
+    <label><input type="checkbox" id="chk-mouse" checked> Mouse</label>
+    <label><input type="checkbox" id="chk-keyboard" checked> Keyboard</label>
+    <span id="control-status" style="color: #888;">Click video to enable control</span>
+  </div>
+  <div id="video-container" tabindex="0">
     <video id="video" autoplay playsinline muted></video>
+    <div id="control-hint">Click here to control</div>
   </div>
   <div id="log"></div>
 
   <script type="module">
     // HubLive JS SDK from CDN
-    import { Room, RoomEvent, Track } from 'https://esm.sh/hublive-client@2.9.7';
+    import { Room, RoomEvent, Track, DataPacket_Kind } from 'https://esm.sh/hublive-client@2.9.7';
 
     const WS_URL = 'ws://localhost:7880';
     const API_KEY = 'devkey';
@@ -37,6 +56,17 @@
     const statusEl = document.getElementById('status');
     const videoEl = document.getElementById('video');
     const logEl = document.getElementById('log');
+    const videoContainer = document.getElementById('video-container');
+    const controlHint = document.getElementById('control-hint');
+    const controlStatus = document.getElementById('control-status');
+    const chkMouse = document.getElementById('chk-mouse');
+    const chkKeyboard = document.getElementById('chk-keyboard');
+
+    let room = null;
+    let seq = 0;
+    let controlActive = false;
+    let lastMouseSendTime = 0;
+    const MOUSE_THROTTLE_MS = 16; // ~60fps
 
     function log(msg) {
       const d = new Date().toLocaleTimeString();
@@ -52,10 +82,172 @@
       statusEl.className = cls;
     }
 
-    // Generate JWT token client-side (for dev only)
+    // -----------------------------------------------------------------------
+    // Input event sending
+    // -----------------------------------------------------------------------
+
+    function sendInputEvent(data) {
+      if (!room || room.state !== 'connected') return;
+      try {
+        const json = JSON.stringify(data);
+        const bytes = new TextEncoder().encode(json);
+        // publishData sends via the LiveKit data channel.
+        // reliable=true for keyboard, unreliable for mouse moves.
+        const reliable = data.t === 2 || (data.t === 1 && data.a !== 1);
+        room.localParticipant.publishData(bytes, { reliable });
+      } catch (e) {
+        // Silently drop if not connected yet
+      }
+    }
+
+    function getNormalizedCoords(e) {
+      const rect = videoEl.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      return {
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y))
+      };
+    }
+
+    function getModifiers(e) {
+      let m = 0;
+      if (e.ctrlKey)  m |= 1;
+      if (e.shiftKey) m |= 2;
+      if (e.altKey)   m |= 4;
+      if (e.metaKey)  m |= 8;
+      return m;
+    }
+
+    // Map MouseEvent.button to protocol button codes.
+    // MouseEvent.button: 0=left, 1=middle, 2=right, 3=back, 4=forward
+    // Protocol: same mapping (0=left, 1=middle, 2=right, 3=x1, 4=x2)
+    function mapButton(btn) {
+      return btn;
+    }
+
+    // -----------------------------------------------------------------------
+    // Control activation
+    // -----------------------------------------------------------------------
+
+    function activateControl() {
+      controlActive = true;
+      videoContainer.classList.add('control-active');
+      controlHint.style.opacity = '0';
+      controlStatus.textContent = 'Control active (Esc to release)';
+      controlStatus.style.color = '#27ae60';
+    }
+
+    function deactivateControl() {
+      controlActive = false;
+      videoContainer.classList.remove('control-active');
+      controlHint.style.opacity = '1';
+      controlStatus.textContent = 'Click video to enable control';
+      controlStatus.style.color = '#888';
+    }
+
+    // -----------------------------------------------------------------------
+    // Mouse event handlers
+    // -----------------------------------------------------------------------
+
+    videoContainer.addEventListener('click', (e) => {
+      if (!controlActive) {
+        activateControl();
+        videoContainer.focus();
+        e.preventDefault();
+        return;
+      }
+    });
+
+    videoContainer.addEventListener('mousemove', (e) => {
+      if (!controlActive || !chkMouse.checked) return;
+
+      const now = performance.now();
+      if (now - lastMouseSendTime < MOUSE_THROTTLE_MS) return;
+      lastMouseSendTime = now;
+
+      const { x, y } = getNormalizedCoords(e);
+      sendInputEvent({ t: 1, s: ++seq, a: 1, x, y, b: 0, d: 0 });
+    });
+
+    videoContainer.addEventListener('mousedown', (e) => {
+      if (!controlActive || !chkMouse.checked) return;
+      e.preventDefault();
+      const { x, y } = getNormalizedCoords(e);
+      sendInputEvent({ t: 1, s: ++seq, a: 2, x, y, b: mapButton(e.button), d: 0 });
+    });
+
+    videoContainer.addEventListener('mouseup', (e) => {
+      if (!controlActive || !chkMouse.checked) return;
+      e.preventDefault();
+      const { x, y } = getNormalizedCoords(e);
+      sendInputEvent({ t: 1, s: ++seq, a: 3, x, y, b: mapButton(e.button), d: 0 });
+    });
+
+    videoContainer.addEventListener('wheel', (e) => {
+      if (!controlActive || !chkMouse.checked) return;
+      e.preventDefault();
+      const { x, y } = getNormalizedCoords(e);
+      // deltaY: positive = scroll down, negative = scroll up.
+      // Windows WHEEL_DELTA = 120. Map pixel delta to wheel units.
+      const delta = -Math.round(e.deltaY);
+      sendInputEvent({ t: 1, s: ++seq, a: 4, x, y, b: 0, d: delta });
+    }, { passive: false });
+
+    // Suppress right-click context menu on the video container.
+    videoContainer.addEventListener('contextmenu', (e) => {
+      if (controlActive) e.preventDefault();
+    });
+
+    // -----------------------------------------------------------------------
+    // Keyboard event handlers
+    // -----------------------------------------------------------------------
+
+    videoContainer.addEventListener('keydown', (e) => {
+      if (!controlActive || !chkKeyboard.checked) return;
+
+      // Escape deactivates control.
+      if (e.key === 'Escape') {
+        deactivateControl();
+        e.preventDefault();
+        return;
+      }
+
+      // Prevent default browser actions for most keys when controlling.
+      // Allow F11 (fullscreen) and F12 (devtools) to pass through.
+      if (e.key !== 'F11' && e.key !== 'F12') {
+        e.preventDefault();
+      }
+
+      sendInputEvent({
+        t: 2, s: ++seq, a: 1,
+        k: e.keyCode, m: getModifiers(e)
+      });
+    });
+
+    videoContainer.addEventListener('keyup', (e) => {
+      if (!controlActive || !chkKeyboard.checked) return;
+
+      if (e.key !== 'F11' && e.key !== 'F12') {
+        e.preventDefault();
+      }
+
+      sendInputEvent({
+        t: 2, s: ++seq, a: 2,
+        k: e.keyCode, m: getModifiers(e)
+      });
+    });
+
+    // Deactivate control when video container loses focus.
+    videoContainer.addEventListener('blur', () => {
+      if (controlActive) deactivateControl();
+    });
+
+    // -----------------------------------------------------------------------
+    // JWT Token generation (dev only)
+    // -----------------------------------------------------------------------
+
     async function generateToken() {
-      // Use the hublive-client's built-in token generation or create manually
-      // For dev, we'll create a simple JWT
       const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
         .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
@@ -71,14 +263,14 @@
         video: {
           roomJoin: true,
           room: ROOM_NAME,
-          canPublish: false,
+          canPublish: true,       // Need publish for sending data
+          canPublishData: true,   // Explicitly allow data publishing
           canSubscribe: true
         }
       })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
       const signingInput = `${header}.${payload}`;
 
-      // HMAC-SHA256 using Web Crypto API
       const key = await crypto.subtle.importKey(
         'raw',
         new TextEncoder().encode(API_SECRET),
@@ -93,13 +285,17 @@
       return `${signingInput}.${signature}`;
     }
 
+    // -----------------------------------------------------------------------
+    // Room connection
+    // -----------------------------------------------------------------------
+
     async function connect() {
       try {
         log('Generating viewer token...');
         const token = await generateToken();
         log(`Identity: ${VIEWER_IDENTITY}`);
 
-        const room = new Room({
+        room = new Room({
           adaptiveStream: true,
           dynacast: true,
         });
@@ -112,6 +308,7 @@
         room.on(RoomEvent.Disconnected, (reason) => {
           log('Disconnected: ' + reason);
           setStatus('Disconnected', 'disconnected');
+          deactivateControl();
         });
 
         room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -120,13 +317,36 @@
             track.attach(videoEl);
             setStatus(`Streaming from ${participant.identity}`, 'connected');
             log('Video attached!');
+          } else if (track.kind === Track.Kind.Audio) {
+            // Attach audio track. We unmute the video element since it was
+            // initially muted (autoplay policy). Create a separate audio
+            // element to avoid interfering with the video element's muted
+            // attribute (browsers require user gesture to unmute).
+            const audioEl = document.createElement('audio');
+            audioEl.autoplay = true;
+            audioEl.style.display = 'none';
+            document.body.appendChild(audioEl);
+            track.attach(audioEl);
+            log('Audio attached!');
           }
         });
 
         room.on(RoomEvent.TrackUnsubscribed, (track) => {
-          log('Track unsubscribed');
-          track.detach(videoEl);
-          setStatus('Connected - stream ended', 'connecting');
+          log(`Track unsubscribed: ${track.kind}`);
+          if (track.kind === Track.Kind.Video) {
+            track.detach(videoEl);
+            setStatus('Connected - stream ended', 'connecting');
+            deactivateControl();
+          } else if (track.kind === Track.Kind.Audio) {
+            // Detach from all elements the track was attached to and remove
+            // any hidden audio elements we created.
+            const els = track.detach();
+            for (const el of els) {
+              if (el.tagName === 'AUDIO') {
+                el.remove();
+              }
+            }
+          }
         });
 
         room.on(RoomEvent.ParticipantConnected, (participant) => {
@@ -135,6 +355,12 @@
 
         room.on(RoomEvent.ParticipantDisconnected, (participant) => {
           log(`Participant left: ${participant.identity}`);
+        });
+
+        room.on(RoomEvent.DataReceived, (payload, participant, kind) => {
+          // Agent might send data back (e.g., ack). Log it for debugging.
+          const text = new TextDecoder().decode(payload);
+          log(`Data from ${participant?.identity || 'unknown'}: ${text.substring(0, 100)}`);
         });
 
         log(`Connecting to ${WS_URL}...`);
@@ -149,6 +375,13 @@
               pub.track.attach(videoEl);
               setStatus(`Streaming from ${participant.identity}`, 'connected');
               log('Attached existing video track');
+            } else if (pub.track && pub.track.kind === Track.Kind.Audio) {
+              const audioEl = document.createElement('audio');
+              audioEl.autoplay = true;
+              audioEl.style.display = 'none';
+              document.body.appendChild(audioEl);
+              pub.track.attach(audioEl);
+              log('Attached existing audio track');
             }
           });
         });

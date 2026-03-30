@@ -27,7 +27,15 @@ public:
     bool SendAddTrack(const std::string& cid, const std::string& name,
                       hublive::TrackType type, hublive::TrackSource source,
                       uint32_t width, uint32_t height);
+    // Overload for audio tracks (no width/height).
+    bool SendAddAudioTrack(const std::string& cid, const std::string& name,
+                           hublive::TrackSource source);
     bool SendPing();
+
+    // Reset internal state for reconnection. Re-registers the OnMessage
+    // handler on the transport so a new WebSocket connection will be routed
+    // to this SignalingClient. Callbacks (OnJoin, OnAnswer, etc.) are preserved.
+    void Reset();
 
     void SetOnJoin(OnJoinCallback cb) { on_join_ = std::move(cb); }
     void SetOnAnswer(OnAnswerCallback cb) { on_answer_ = std::move(cb); }

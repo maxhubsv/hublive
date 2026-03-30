@@ -95,6 +95,11 @@ set(SOURCES
     src/screen_capture_source.cc
     src/peer_connection_agent.cc
     src/whip_client.cc
+    src/input_injector.cc
+    src/audio_capture.cc
+    src/audio_resampler.cc
+    src/audio_mixer.cc
+    src/custom_audio_source.cc
     ${PROTO_GEN_SRCS}
 )
 

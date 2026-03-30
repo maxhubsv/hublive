@@ -24,6 +24,10 @@ public:
     void Close();
     bool IsConnected() const { return connected_.load(); }
 
+    // Reset internal state after Close() so that a new Connect() call can be made.
+    // Must be called after Close() and before a subsequent Connect().
+    void Reset();
+
     void SetOnMessage(OnMessageCallback cb) { on_message_ = std::move(cb); }
     void SetOnClose(OnCloseCallback cb) { on_close_ = std::move(cb); }
     void SetOnError(OnErrorCallback cb) { on_error_ = std::move(cb); }

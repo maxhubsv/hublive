@@ -1,4 +1,6 @@
 #include "peer_connection_agent.h"
+#include "json_lite.h"
+#include "hublive_models.pb.h"
 
 #include "api/create_peerconnection_factory.h"
 #include "api/create_modular_peer_connection_factory.h"
@@ -16,9 +18,11 @@
 #include "rtc_base/thread.h"
 
 #include <cstdio>
+#include <cmath>
 #include <functional>
 #include <mutex>
 #include <condition_variable>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // Inner ref-counted observer for CreateSessionDescription callbacks.
@@ -153,11 +157,46 @@ bool PeerConnectionAgent::Initialize() {
         OnRemoteTrickle(cand, target);
     });
 
+    // Initialize input injector with current screen dimensions.
+    if (config_.control.enabled) {
+        int sw = GetSystemMetrics(SM_CXSCREEN);
+        int sh = GetSystemMetrics(SM_CYSCREEN);
+        input_injector_.Init(sw, sh);
+        printf("[PeerConnectionAgent] Remote control enabled (screen %dx%d)\n", sw, sh);
+    }
+
+    // Initialize audio capture (loopback + mic).
+    InitAudioCapture();
+
     printf("[PeerConnectionAgent] Initialized\n");
     return true;
 }
 
 void PeerConnectionAgent::Shutdown() {
+    StopAudioCapture();
+
+    // Clean up all DataChannels and their observers.
+    if (input_data_channel_) {
+        input_data_channel_->UnregisterObserver();
+        input_data_channel_->Close();
+        input_data_channel_ = nullptr;
+    }
+    input_dc_observer_.reset();
+
+    if (lossy_dc_) {
+        lossy_dc_->UnregisterObserver();
+        lossy_dc_->Close();
+        lossy_dc_ = nullptr;
+    }
+    lossy_dc_observer_.reset();
+
+    if (reliable_dc_) {
+        reliable_dc_->UnregisterObserver();
+        reliable_dc_->Close();
+        reliable_dc_ = nullptr;
+    }
+    reliable_dc_observer_.reset();
+
     if (screen_source_) {
         screen_source_->Stop();
     }
@@ -165,6 +204,7 @@ void PeerConnectionAgent::Shutdown() {
         peer_connection_->Close();
         peer_connection_ = nullptr;
     }
+    audio_source_ = nullptr;
     pc_factory_ = nullptr;
 
     // Stop threads after releasing all WebRTC objects.
@@ -178,7 +218,63 @@ void PeerConnectionAgent::Shutdown() {
     }
 
     ice_connected_ = false;
+    disconnected_ = false;
     printf("[PeerConnectionAgent] Shut down\n");
+}
+
+void PeerConnectionAgent::Disconnect() {
+    printf("[PeerConnectionAgent] Disconnect — tearing down PeerConnection\n");
+
+    // Stop audio capture threads.
+    StopAudioCapture();
+
+    // Close DataChannels before PeerConnection.
+    // Unregister observers before closing to avoid dangling callbacks.
+    if (input_data_channel_) {
+        input_data_channel_->UnregisterObserver();
+        input_data_channel_->Close();
+        input_data_channel_ = nullptr;
+    }
+    input_dc_observer_.reset();
+
+    if (lossy_dc_) {
+        lossy_dc_->UnregisterObserver();
+        lossy_dc_->Close();
+        lossy_dc_ = nullptr;
+    }
+    lossy_dc_observer_.reset();
+
+    if (reliable_dc_) {
+        reliable_dc_->UnregisterObserver();
+        reliable_dc_->Close();
+        reliable_dc_ = nullptr;
+    }
+    reliable_dc_observer_.reset();
+
+    // Stop screen capture (frames are not useful without a PC).
+    // The source object itself stays alive — Start() will be called again
+    // when AddScreenTrack() runs on the next successful join.
+    if (screen_source_) {
+        screen_source_->Stop();
+    }
+
+    // Close and release the PeerConnection.  This detaches all senders/tracks.
+    if (peer_connection_) {
+        peer_connection_->Close();
+        peer_connection_ = nullptr;
+    }
+
+    // Release WHIP state if we were in that mode.
+    whip_client_.reset();
+    whip_session_ = hublive::WhipSession{};
+    signaling_mode_ = SignalingMode::HUBLIVE_WS;
+
+    // Reset flags so the next connection starts cleanly.
+    ice_connected_ = false;
+    disconnected_ = false;
+    pending_answer_ = false;
+
+    printf("[PeerConnectionAgent] Disconnect complete — ready for reconnect\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -236,6 +332,24 @@ void PeerConnectionAgent::FallbackToWhip(const std::string& whip_url,
     }
     printf("[PeerConnectionAgent] WHIP: Screen track added\n");
 
+    // Add audio track (WHIP mode — no signaling AddTrack needed).
+    if (audio_source_) {
+        auto audio_track = pc_factory_->CreateAudioTrack("audio_0", audio_source_.get());
+        if (audio_track) {
+            auto audio_add = peer_connection_->AddTrack(audio_track, {"stream_0"});
+            if (audio_add.ok()) {
+                printf("[PeerConnectionAgent] WHIP: Audio track added\n");
+                StartAudioCapture();
+            } else {
+                printf("[PeerConnectionAgent] WHIP: Audio AddTrack error: %s\n",
+                       audio_add.error().message());
+            }
+        }
+    }
+
+    // Set up input DataChannel for remote control.
+    SetupInputDataChannel();
+
     // Create SDP offer.
     CreateOffer();
 }
@@ -254,6 +368,8 @@ void PeerConnectionAgent::OnJoinResponse(const hublive::JoinResponse& join) {
     }
 
     AddScreenTrack();
+    AddAudioTrack();
+    SetupInputDataChannel();
     CreateOffer();
 }
 
@@ -416,6 +532,351 @@ void PeerConnectionAgent::AddScreenTrack() {
     } else {
         printf("[PeerConnectionAgent] Screen track added\n");
     }
+}
+
+// ---------------------------------------------------------------------------
+// Audio capture, mixing, and WebRTC track
+// ---------------------------------------------------------------------------
+
+void PeerConnectionAgent::InitAudioCapture() {
+    bool any_audio = config_.audio.system_enabled || config_.audio.mic_enabled;
+    if (!any_audio) {
+        printf("[PeerConnectionAgent] Audio disabled in config\n");
+        return;
+    }
+
+    // Create the audio source (will be attached to a WebRTC audio track later).
+    audio_source_ = webrtc::make_ref_counted<CustomAudioSource>();
+
+    // Create mixer.
+    audio_mixer_ = std::make_unique<AudioMixer>();
+    audio_mixer_->SetSystemGain(config_.audio.system_gain);
+    audio_mixer_->SetMicGain(config_.audio.mic_gain);
+
+    // Initialize system loopback capture.
+    if (config_.audio.system_enabled) {
+        system_capture_ = std::make_unique<WasapiCapture>();
+        if (!system_capture_->Init(true)) {
+            printf("[PeerConnectionAgent] System audio init failed — continuing without\n");
+            system_capture_.reset();
+        } else {
+            // Set up resampler: device format -> 48kHz mono.
+            system_resampler_ = std::make_unique<AudioResampler>();
+            if (!system_resampler_->Init(
+                    system_capture_->sample_rate(),
+                    system_capture_->channels(),
+                    AudioMixer::kSampleRate,
+                    AudioMixer::kChannels)) {
+                printf("[PeerConnectionAgent] System resampler init failed\n");
+                system_capture_.reset();
+                system_resampler_.reset();
+            } else {
+                // Wire capture callback -> resampler -> mixer.
+                system_capture_->SetOnData(
+                    [this](const float* data, int frames, int channels, int sample_rate) {
+                        if (!audio_running_) return;
+                        // Resample to 48kHz mono.
+                        int max_out = system_resampler_->MaxOutputFrames(frames);
+                        std::vector<float> resampled(max_out);
+                        int out_frames = 0;
+                        system_resampler_->Process(data, frames,
+                                                    resampled.data(), &out_frames);
+                        if (out_frames > 0) {
+                            audio_mixer_->PushSystemData(resampled.data(), out_frames);
+                        }
+                    });
+            }
+        }
+    }
+
+    // Initialize microphone capture.
+    if (config_.audio.mic_enabled) {
+        mic_capture_ = std::make_unique<WasapiCapture>();
+        if (!mic_capture_->Init(false)) {
+            printf("[PeerConnectionAgent] Mic init failed — continuing without\n");
+            mic_capture_.reset();
+        } else {
+            // Set up resampler: device format -> 48kHz mono.
+            mic_resampler_ = std::make_unique<AudioResampler>();
+            if (!mic_resampler_->Init(
+                    mic_capture_->sample_rate(),
+                    mic_capture_->channels(),
+                    AudioMixer::kSampleRate,
+                    AudioMixer::kChannels)) {
+                printf("[PeerConnectionAgent] Mic resampler init failed\n");
+                mic_capture_.reset();
+                mic_resampler_.reset();
+            } else {
+                // Wire capture callback -> resampler -> mixer.
+                mic_capture_->SetOnData(
+                    [this](const float* data, int frames, int channels, int sample_rate) {
+                        if (!audio_running_) return;
+                        int max_out = mic_resampler_->MaxOutputFrames(frames);
+                        std::vector<float> resampled(max_out);
+                        int out_frames = 0;
+                        mic_resampler_->Process(data, frames,
+                                                resampled.data(), &out_frames);
+                        if (out_frames > 0) {
+                            audio_mixer_->PushMicData(resampled.data(), out_frames);
+                        }
+                    });
+            }
+        }
+    }
+
+    if (!system_capture_ && !mic_capture_) {
+        printf("[PeerConnectionAgent] No audio devices available — audio disabled\n");
+        audio_source_ = nullptr;
+        audio_mixer_.reset();
+    } else {
+        printf("[PeerConnectionAgent] Audio capture initialized (system=%s mic=%s)\n",
+               system_capture_ ? "yes" : "no",
+               mic_capture_ ? "yes" : "no");
+    }
+}
+
+void PeerConnectionAgent::AddAudioTrack() {
+    if (!audio_source_ || !peer_connection_) return;
+
+    // Tell HubLive server about the audio track.
+    signaling_->SendAddAudioTrack(
+        audio_track_cid_,
+        "audio-mixed",
+        hublive::TrackSource::MICROPHONE);
+
+    // Create a WebRTC audio track from our custom source.
+    auto audio_track = pc_factory_->CreateAudioTrack("audio_0", audio_source_.get());
+    if (!audio_track) {
+        printf("[PeerConnectionAgent] Failed to create audio track\n");
+        return;
+    }
+
+    auto add_result = peer_connection_->AddTrack(audio_track, {"stream_0"});
+    if (!add_result.ok()) {
+        printf("[PeerConnectionAgent] Audio AddTrack error: %s\n",
+               add_result.error().message());
+    } else {
+        printf("[PeerConnectionAgent] Audio track added\n");
+        // Start capturing and mixing audio.
+        StartAudioCapture();
+    }
+}
+
+void PeerConnectionAgent::StartAudioCapture() {
+    if (audio_running_) return;
+    if (!audio_mixer_ || !audio_source_) return;
+
+    audio_running_ = true;
+
+    // Start WASAPI capture threads.
+    if (system_capture_) system_capture_->Start();
+    if (mic_capture_) mic_capture_->Start();
+
+    // Start the mix thread that pulls from the mixer and pushes to WebRTC.
+    audio_mix_thread_ = std::thread(&PeerConnectionAgent::AudioMixThread, this);
+
+    printf("[PeerConnectionAgent] Audio capture started\n");
+}
+
+void PeerConnectionAgent::StopAudioCapture() {
+    if (!audio_running_) return;
+
+    audio_running_ = false;
+
+    // Stop WASAPI capture threads first.
+    if (system_capture_) system_capture_->Stop();
+    if (mic_capture_) mic_capture_->Stop();
+
+    // Stop the mix thread.
+    if (audio_mix_thread_.joinable()) {
+        audio_mix_thread_.join();
+    }
+
+    printf("[PeerConnectionAgent] Audio capture stopped\n");
+}
+
+void PeerConnectionAgent::AudioMixThread() {
+    // This thread pulls mixed 10ms frames from the AudioMixer and delivers
+    // them to the CustomAudioSource (which forwards to WebRTC sinks).
+
+    constexpr int kFrameSamples = AudioMixer::kFrameSamples;  // 480
+    constexpr int kSampleRate = AudioMixer::kSampleRate;      // 48000
+    constexpr int kChannels = AudioMixer::kChannels;          // 1
+
+    float mix_buf[kFrameSamples];
+    std::vector<int16_t> int16_buf(kFrameSamples);
+
+    while (audio_running_) {
+        if (audio_mixer_->GetMixedFrame(mix_buf, kFrameSamples)) {
+            // Convert float32 to int16 for WebRTC.
+            for (int i = 0; i < kFrameSamples; ++i) {
+                float clamped = std::clamp(mix_buf[i], -1.0f, 1.0f);
+                int16_buf[i] = static_cast<int16_t>(clamped * 32767.0f);
+            }
+
+            // Deliver to WebRTC via CustomAudioSource.
+            audio_source_->DeliverData(int16_buf.data(), kFrameSamples,
+                                        kSampleRate, kChannels);
+        }
+
+        // Sleep for ~10ms (one audio frame duration).
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DataChannel for remote input control
+// ---------------------------------------------------------------------------
+
+// Inner observer for DataChannel state/message callbacks.
+// We use raw pointers back to the PeerConnectionAgent since DataChannelObserver
+// is not ref-counted and its lifetime is tied to the DataChannel.
+class SimpleDataChannelObserver : public webrtc::DataChannelObserver {
+public:
+    using MessageCb = std::function<void(const webrtc::DataBuffer&)>;
+
+    explicit SimpleDataChannelObserver(MessageCb on_message)
+        : on_message_(std::move(on_message)) {}
+
+    void OnStateChange() override {}
+    void OnMessage(const webrtc::DataBuffer& buffer) override {
+        if (on_message_) on_message_(buffer);
+    }
+    void OnBufferedAmountChange(uint64_t sent_data_size) override {}
+
+private:
+    MessageCb on_message_;
+};
+
+void PeerConnectionAgent::SetupInputDataChannel() {
+    if (!config_.control.enabled || !peer_connection_) {
+        printf("[PeerConnectionAgent] Remote control disabled or no PC\n");
+        return;
+    }
+
+    // Create a DataChannel labeled "input". This is a peer-to-peer channel
+    // that appears in the SDP offer. In LiveKit/HubLive, however, viewer data
+    // typically arrives via SFU-mediated channels ("_lossy"/"_reliable"), so
+    // we also handle those in OnDataChannel(). This channel is kept as a
+    // fallback for non-SFU (e.g. WHIP) scenarios.
+    webrtc::DataChannelInit dc_config;
+    dc_config.ordered = true;
+
+    auto result = peer_connection_->CreateDataChannelOrError("input", &dc_config);
+    if (!result.ok()) {
+        printf("[PeerConnectionAgent] Failed to create input DataChannel: %s\n",
+               result.error().message());
+        return;
+    }
+
+    input_data_channel_ = result.MoveValue();
+
+    // Register observer (member-owned, not a global static).
+    input_dc_observer_ = std::make_unique<SimpleDataChannelObserver>(
+        [this](const webrtc::DataBuffer& buffer) {
+            OnInputDataChannelMessage(buffer);
+        });
+    input_data_channel_->RegisterObserver(input_dc_observer_.get());
+
+    printf("[PeerConnectionAgent] Input DataChannel created (label=%s)\n",
+           input_data_channel_->label().c_str());
+}
+
+void PeerConnectionAgent::OnDataChannel(
+    webrtc::scoped_refptr<webrtc::DataChannelInterface> channel) {
+    printf("[PeerConnectionAgent] Remote DataChannel received: %s\n",
+           channel->label().c_str());
+
+    // LiveKit SFU sends data from other participants via channels labeled
+    // "_lossy" and "_reliable". These carry DataPacket protobuf messages
+    // wrapping UserPacket payloads.
+    if (channel->label() == "_lossy") {
+        lossy_dc_ = channel;
+        lossy_dc_observer_ = std::make_unique<SimpleDataChannelObserver>(
+            [this](const webrtc::DataBuffer& buffer) {
+                OnSfuDataChannelMessage(buffer);
+            });
+        lossy_dc_->RegisterObserver(lossy_dc_observer_.get());
+        printf("[PeerConnectionAgent] SFU lossy DataChannel attached\n");
+        return;
+    }
+
+    if (channel->label() == "_reliable") {
+        reliable_dc_ = channel;
+        reliable_dc_observer_ = std::make_unique<SimpleDataChannelObserver>(
+            [this](const webrtc::DataBuffer& buffer) {
+                OnSfuDataChannelMessage(buffer);
+            });
+        reliable_dc_->RegisterObserver(reliable_dc_observer_.get());
+        printf("[PeerConnectionAgent] SFU reliable DataChannel attached\n");
+        return;
+    }
+
+    // Direct peer-to-peer "input" channel (for WHIP fallback or direct DC).
+    if (channel->label() == "input" && config_.control.enabled) {
+        input_data_channel_ = channel;
+
+        input_dc_observer_ = std::make_unique<SimpleDataChannelObserver>(
+            [this](const webrtc::DataBuffer& buffer) {
+                OnInputDataChannelMessage(buffer);
+            });
+        input_data_channel_->RegisterObserver(input_dc_observer_.get());
+
+        printf("[PeerConnectionAgent] Input DataChannel attached\n");
+    }
+}
+
+void PeerConnectionAgent::OnSfuDataChannelMessage(
+    const webrtc::DataBuffer& buffer) {
+    // LiveKit SFU data channels carry DataPacket protobuf messages.
+    // We extract the UserPacket payload (which contains our JSON input).
+    if (!config_.control.enabled) return;
+
+    hublive::DataPacket packet;
+    if (!packet.ParseFromArray(buffer.data.data(),
+                               static_cast<int>(buffer.data.size()))) {
+        // Not a valid DataPacket — ignore silently.
+        return;
+    }
+
+    if (!packet.has_user()) return;
+
+    const auto& user = packet.user();
+    const std::string& payload = user.payload();
+    if (payload.empty()) return;
+
+    // Wrap the payload as a DataBuffer and route through the same handler.
+    rtc::CopyOnWriteBuffer cow(
+        reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
+    webrtc::DataBuffer json_buf(std::move(cow), /* binary */ false);
+    OnInputDataChannelMessage(json_buf);
+}
+
+void PeerConnectionAgent::OnInputDataChannelMessage(
+    const webrtc::DataBuffer& buffer) {
+    if (!config_.control.enabled) return;
+
+    // Parse the JSON message. DataChannel may send text or binary;
+    // we handle text (JSON) messages.
+    std::string json(reinterpret_cast<const char*>(buffer.data.data()),
+                     buffer.data.size());
+
+    int type      = json_lite::GetInt(json, "t", 0);
+    uint32_t seq  = json_lite::GetUint32(json, "s", 0);
+    int action    = json_lite::GetInt(json, "a", 0);
+    float x       = json_lite::GetFloat(json, "x", 0.0f);
+    float y       = json_lite::GetFloat(json, "y", 0.0f);
+    int button    = json_lite::GetInt(json, "b", 0);
+    int delta     = json_lite::GetInt(json, "d", 0);
+    int key_code  = json_lite::GetInt(json, "k", 0);
+    int modifiers = json_lite::GetInt(json, "m", 0);
+
+    // Check control sub-permissions.
+    if (type == 1 && !config_.control.mouse) return;
+    if (type == 2 && !config_.control.keyboard) return;
+
+    input_injector_.ProcessMessage(type, seq, action, x, y,
+                                   button, delta, key_code, modifiers);
 }
 
 void PeerConnectionAgent::CreateOffer() {
@@ -584,10 +1045,18 @@ void PeerConnectionAgent::OnConnectionChange(
     switch (new_state) {
         case webrtc::PeerConnectionInterface::PeerConnectionState::kConnected:
             ice_connected_ = true;
+            disconnected_ = false;
             break;
         case webrtc::PeerConnectionInterface::PeerConnectionState::kDisconnected:
         case webrtc::PeerConnectionInterface::PeerConnectionState::kFailed:
+            ice_connected_ = false;
+            disconnected_ = true;
+            break;
         case webrtc::PeerConnectionInterface::PeerConnectionState::kClosed:
+            // kClosed is triggered by an explicit PeerConnection::Close() call
+            // (from Disconnect() or Shutdown()). Do NOT set disconnected_ here
+            // to avoid a race with the main thread's retry logic — Disconnect()
+            // resets the flag itself after Close() returns.
             ice_connected_ = false;
             break;
         default:

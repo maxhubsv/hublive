@@ -114,6 +114,20 @@ bool SignalingClient::SendAddTrack(const std::string& cid, const std::string& na
     return SendRequest(request);
 }
 
+bool SignalingClient::SendAddAudioTrack(const std::string& cid,
+                                         const std::string& name,
+                                         hublive::TrackSource source) {
+    hublive::SignalRequest request;
+    auto* add_track = request.mutable_add_track();
+    add_track->set_cid(cid);
+    add_track->set_name(name);
+    add_track->set_type(hublive::TrackType::AUDIO);
+    add_track->set_source(source);
+    printf("  [signal] SendAddAudioTrack: cid=%s name=%s\n",
+           cid.c_str(), name.c_str());
+    return SendRequest(request);
+}
+
 bool SignalingClient::SendPing() {
     hublive::SignalRequest request;
     auto* ping = request.mutable_ping_req();
@@ -121,4 +135,15 @@ bool SignalingClient::SendPing() {
         std::chrono::system_clock::now().time_since_epoch()).count();
     ping->set_timestamp(now_ms);
     return SendRequest(request);
+}
+
+void SignalingClient::Reset() {
+    // Re-register the OnMessage handler on the transport. This is necessary
+    // because after WebSocketTransport::Reset() + Connect(), the new WebSocket
+    // connection needs to route incoming messages back to this SignalingClient.
+    transport_->SetOnMessage([this](const std::vector<uint8_t>& data) {
+        OnMessage(data);
+    });
+    // Note: application-level callbacks (on_join_, on_answer_, etc.) are kept
+    // intact so the PeerConnectionAgent does not need to re-register them.
 }

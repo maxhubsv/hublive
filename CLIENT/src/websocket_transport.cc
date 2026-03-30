@@ -225,3 +225,15 @@ void WebSocketTransport::Cleanup() {
     if (connection_) { WinHttpCloseHandle(connection_); connection_ = nullptr; }
     if (session_) { WinHttpCloseHandle(session_); session_ = nullptr; }
 }
+
+void WebSocketTransport::Reset() {
+    // Ensure everything is closed first.
+    Close();
+
+    // All handles are already nullptr after Close()->Cleanup().
+    // Reset connected flag (should already be false after Close()).
+    connected_ = false;
+
+    // Note: callbacks (on_message_, on_close_, on_error_) are preserved
+    // intentionally so the caller does not need to re-register them.
+}

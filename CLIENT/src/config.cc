@@ -48,6 +48,15 @@ AppConfig LoadConfig(const std::string& path) {
             if (key == "fps") config.capture.fps = std::stoi(value);
             else if (key == "monitor") config.capture.monitor = std::stoi(value) - 1;
             else if (key == "scale") config.capture.scale = std::stof(value);
+        } else if (current_section == "audio") {
+            if (key == "system_enabled") config.audio.system_enabled = (value == "true" || value == "1");
+            else if (key == "mic_enabled") config.audio.mic_enabled = (value == "true" || value == "1");
+            else if (key == "system_gain") config.audio.system_gain = std::stof(value);
+            else if (key == "mic_gain") config.audio.mic_gain = std::stof(value);
+        } else if (current_section == "control") {
+            if (key == "enabled") config.control.enabled = (value == "true" || value == "1");
+            else if (key == "mouse") config.control.mouse = (value == "true" || value == "1");
+            else if (key == "keyboard") config.control.keyboard = (value == "true" || value == "1");
         }
     }
 
