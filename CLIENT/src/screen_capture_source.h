@@ -14,7 +14,7 @@
 class ScreenCaptureSource : public webrtc::AdaptedVideoTrackSource,
                             public webrtc::DesktopCapturer::Callback {
 public:
-    static webrtc::scoped_refptr<ScreenCaptureSource> Create(int monitor_index, int fps);
+    static webrtc::scoped_refptr<ScreenCaptureSource> Create(int monitor_index, int fps, bool use_directx = true);
 
     ~ScreenCaptureSource() override;
 
@@ -30,7 +30,7 @@ public:
     int height() const { return height_; }
 
 protected:
-    ScreenCaptureSource(int monitor_index, int fps);
+    ScreenCaptureSource(int monitor_index, int fps, bool use_directx);
 
 private:
     void OnCaptureResult(webrtc::DesktopCapturer::Result result,

@@ -3,8 +3,8 @@ import { createBrowserRouter } from "react-router";
 import { RootLayout } from "@/layouts/RootLayout";
 import { MainLayout } from "@/layouts/MainLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
+import { Spinner } from "@/shared/ui/spinner";
 
-// Lazy-loaded pages for code splitting
 const TestPage = lazy(() => import("@/features/dashboard/pages/TestPage"));
 const DashboardPage = lazy(
   () => import("@/features/dashboard/pages/DashboardPage"),
@@ -12,12 +12,15 @@ const DashboardPage = lazy(
 const StreamingPage = lazy(
   () => import("@/features/streaming/pages/StreamingPage"),
 );
+const SettingsPage = lazy(
+  () => import("@/features/settings/pages/SettingsPage"),
+);
 const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));
 
 function PageLoader() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="size-spinner animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      <Spinner />
     </div>
   );
 }
@@ -68,6 +71,14 @@ export const router = createBrowserRouter([
             element: (
               <SuspenseWrap>
                 <StreamingPage />
+              </SuspenseWrap>
+            ),
+          },
+          {
+            path: "/settings",
+            element: (
+              <SuspenseWrap>
+                <SettingsPage />
               </SuspenseWrap>
             ),
           },

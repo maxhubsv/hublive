@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/ui/button";
 import { APP_NAME, LOCALES, LOCALE_LABELS, type Locale } from "@/shared/constants";
-import { LayoutDashboard, Radio, Settings } from "lucide-react";
+import { LayoutDashboard, Monitor, Radio, Settings } from "lucide-react";
 
 const NAV_ITEMS: ReadonlyArray<{
   to: string;
@@ -26,13 +26,13 @@ export function MainLayout() {
         {/* Logo */}
         <div className="flex h-header items-center gap-element border-b border-bg-tertiary px-page">
           <div className="flex size-icon-md items-center justify-center rounded-lg bg-accent">
-            <span className="text-body font-bold text-white">H</span>
+            <Monitor className="size-icon-sm text-white" />
           </div>
           <span className="text-section-title font-semibold">{APP_NAME}</span>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-[2px] p-tight">
+        <nav className="flex-1 space-y-hairline p-tight">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
@@ -58,7 +58,7 @@ export function MainLayout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
         <header className="flex h-header shrink-0 items-center justify-end border-b border-bg-tertiary bg-bg-secondary px-page">
-          <div className="flex items-center gap-[2px]">
+          <div className="flex items-center gap-hairline">
             {LOCALES.map((locale) => (
               <Button
                 key={locale}

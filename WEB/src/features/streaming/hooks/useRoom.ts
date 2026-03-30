@@ -8,6 +8,7 @@ import {
   type RemoteParticipant,
 } from "livekit-client";
 import type { ConnectionState, InputEvent } from "../types/streaming.types";
+import { generateLiveKitToken } from "@/lib/jwt";
 import {
   DEFAULT_LIVEKIT_URL,
   DEFAULT_ROOM_NAME,
@@ -15,67 +16,6 @@ import {
   LIVEKIT_API_SECRET,
   VIEWER_IDENTITY,
 } from "@/shared/constants";
-
-// ─── JWT Token Generation (client-side, dev mode) ───────────────────────
-
-function base64UrlEncode(data: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]!);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function strToBase64Url(str: string): string {
-  return base64UrlEncode(new TextEncoder().encode(str));
-}
-
-async function generateToken(
-  apiKey: string,
-  apiSecret: string,
-  identity: string,
-  roomName: string,
-): Promise<string> {
-  const header = strToBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-
-  const now = Math.floor(Date.now() / 1000);
-  const payload = strToBase64Url(
-    JSON.stringify({
-      iss: apiKey,
-      sub: identity,
-      nbf: now,
-      exp: now + 86400,
-      iat: now,
-      identity,
-      name: "Web Viewer",
-      video: {
-        roomJoin: true,
-        room: roomName,
-        canPublish: true,
-        canPublishData: true,
-        canSubscribe: true,
-      },
-    }),
-  );
-
-  const signingInput = `${header}.${payload}`;
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(apiSecret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(signingInput),
-  );
-
-  return `${signingInput}.${base64UrlEncode(new Uint8Array(sig))}`;
-}
-
-// ─── Hook ────────────────────────────────────────────────────────────────
 
 export function useRoom() {
   const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
@@ -123,8 +63,6 @@ export function useRoom() {
     [],
   );
 
-  // --- Attach existing tracks (joined mid-session) ---
-
   const attachExistingTracks = useCallback(
     (room: Room) => {
       room.remoteParticipants.forEach((participant) => {
@@ -153,7 +91,7 @@ export function useRoom() {
     setConnectionState("connecting");
 
     try {
-      const token = await generateToken(
+      const token = await generateLiveKitToken(
         LIVEKIT_API_KEY,
         LIVEKIT_API_SECRET,
         VIEWER_IDENTITY,
@@ -221,7 +159,7 @@ export function useRoom() {
   // --- Disconnect ---
 
   const disconnect = useCallback(() => {
-    ++connectVersionRef.current; // invalidate any in-flight connect
+    ++connectVersionRef.current;
     const room = roomRef.current;
     if (room) {
       room.disconnect();

@@ -3,30 +3,24 @@
     "title": "HubLive",
     "loading": "加载中...",
     "error": "发生错误",
-    "retry": "重试",
-    "noData": "暂无数据",
-    "save": "保存",
-    "cancel": "取消",
-    "confirm": "确认",
-    "delete": "删除"
+    "unexpectedError": "发生意外错误",
+    "tryAgain": "重试",
+    "somethingWentWrong": "出了点问题"
   },
   "auth": {
     "login": "登录",
     "logout": "退出登录",
     "email": "邮箱",
+    "emailPlaceholder": "admin@hublive.io",
     "password": "密码",
     "loginButton": "登录",
+    "loginSuccess": "登录成功",
     "loginError": "登录失败"
   },
   "sidebar": {
     "dashboard": "仪表板",
     "streaming": "直播",
     "settings": "设置"
-  },
-  "header": {
-    "search": "搜索...",
-    "language": "语言",
-    "theme": "主题"
   },
   "dashboard": {
     "title": "仪表板",
@@ -40,7 +34,33 @@
     "connected": "已连接",
     "disconnected": "已断开",
     "error": "连接错误",
-    "noStream": "暂无直播流"
+    "noStream": "暂无直播流",
+    "mouse": "鼠标",
+    "keyboard": "键盘",
+    "clickToControl": "点击以启用控制",
+    "pressEscapeToRelease": "按 Escape 释放"
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "自定义外观和配置应用程序",
+    "appearance": "外观",
+    "language": "语言",
+    "languageDesc": "选择应用程序的显示语言",
+    "theme": "主题",
+    "themeDesc": "当前使用暗色主题",
+    "dark": "暗色",
+    "streaming": "直播",
+    "serverUrl": "服务器地址",
+    "serverUrlDesc": "LiveKit 服务器的 WebSocket 地址",
+    "roomName": "房间名称",
+    "roomNameDesc": "默认连接的房间名称",
+    "autoConnect": "自动连接",
+    "autoConnectDesc": "打开直播页面时自动连接",
+    "save": "保存",
+    "about": "关于",
+    "aboutDesc": "基于 WebRTC 的远程屏幕直播平台",
+    "version": "版本",
+    "techStack": "技术栈"
   },
   "test": {
     "title": "系统测试页面",
@@ -50,10 +70,8 @@
     "themeWorks": "主题正常",
     "componentsWork": "组件正常",
     "currentLocale": "当前语言",
-    "switchLocale": "切换语言",
-    "navigateTo": "导航到",
     "description": "点击链接测试SPA路由",
-    "colorPalette": "设计系统调色板",
-    "buttonVariants": "按钮变体"
+    "buttonVariants": "按钮变体",
+    "reset": "重置"
   }
 }

@@ -1,4 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { AlertCircle } from "lucide-react";
+import i18n from "@/lib/i18n";
+import { Button } from "@/shared/ui/button";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -31,21 +34,22 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="flex min-h-[400px] items-center justify-center p-page">
+        <div className="flex h-full items-center justify-center p-page">
           <div className="w-full max-w-md rounded-lg bg-bg-secondary p-page text-center">
-            <div className="mb-section text-4xl">!</div>
+            <div className="mb-section flex justify-center">
+              <AlertCircle className="size-icon-lg text-danger" />
+            </div>
             <h2 className="mb-element text-section-title font-semibold text-danger">
-              Something went wrong
+              {i18n.t("app.somethingWentWrong")}
             </h2>
             <p className="mb-section text-body text-text-secondary">
-              {this.state.error?.message || "An unexpected error occurred"}
+              {this.state.error?.message || i18n.t("app.unexpectedError")}
             </p>
-            <button
+            <Button
               onClick={() => this.setState({ hasError: false, error: undefined })}
-              className="rounded-md bg-accent px-section py-element text-body font-medium text-white hover:bg-accent/90"
             >
-              Try again
-            </button>
+              {i18n.t("app.tryAgain")}
+            </Button>
           </div>
         </div>
       );

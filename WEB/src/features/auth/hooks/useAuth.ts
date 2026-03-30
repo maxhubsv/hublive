@@ -1,20 +1,22 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { authApi } from "../api/auth.api";
 import { useAuthStore } from "../store/auth.store";
 import type { LoginRequest } from "../types/auth.types";
 
 export function useLogin() {
+  const { t } = useTranslation();
   const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
     mutationFn: (data: LoginRequest) => authApi.login(data),
     onSuccess: (res) => {
       setAuth(res.data.user, res.data.token);
-      toast.success("Login successful");
+      toast.success(t("auth.loginSuccess"));
     },
     onError: () => {
-      toast.error("Login failed");
+      toast.error(t("auth.loginError"));
     },
   });
 }

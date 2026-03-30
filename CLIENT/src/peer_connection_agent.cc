@@ -137,35 +137,37 @@ bool PeerConnectionAgent::Initialize() {
 
     // Create screen capture source(s) based on monitor config.
     {
-        // Enumerate available monitors.
-        auto options = webrtc::DesktopCaptureOptions::CreateDefault();
-        auto temp_capturer = webrtc::DesktopCapturer::CreateScreenCapturer(options);
-        webrtc::DesktopCapturer::SourceList sources;
-        if (temp_capturer) temp_capturer->GetSourceList(&sources);
-
-        int monitor_count = static_cast<int>(sources.size());
+        int monitor_count = GetSystemMetrics(SM_CMONITORS);
+        if (monitor_count <= 0) monitor_count = 1;
         printf("[PeerConnectionAgent] Found %d monitor(s)\n", monitor_count);
 
         std::vector<int> indices;
         if (config_.capture.monitor == "all") {
             for (int i = 0; i < monitor_count; i++) indices.push_back(i);
         } else {
-            int idx = std::stoi(config_.capture.monitor);
-            // Config uses 1-based, convert to 0-based
-            if (idx > 0) idx -= 1;
-            if (idx >= 0 && idx < monitor_count) {
-                indices.push_back(idx);
-            } else if (monitor_count > 0) {
+            try {
+                int idx = std::stoi(config_.capture.monitor);
+                if (idx > 0) idx -= 1;  // config is 1-based
+                if (idx >= 0 && idx < monitor_count) {
+                    indices.push_back(idx);
+                } else {
+                    indices.push_back(0);
+                }
+            } catch (...) {
                 indices.push_back(0);
             }
         }
 
-        for (int idx : indices) {
-            auto src = ScreenCaptureSource::Create(idx, config_.capture.fps);
+        // First source uses DirectX (fast), additional sources use GDI
+        // to avoid DXGI DuplicateOutput conflict which causes abort().
+        for (size_t i = 0; i < indices.size(); i++) {
+            bool use_directx = (i == 0);  // only first capturer uses DXGI
+            auto src = ScreenCaptureSource::Create(indices[i], config_.capture.fps, use_directx);
             if (src) {
                 screen_sources_.push_back(src);
-                track_cids_.push_back("screen_" + std::to_string(idx));
-                printf("[PeerConnectionAgent] Created capture for monitor %d\n", idx);
+                track_cids_.push_back("screen_" + std::to_string(indices[i]));
+                printf("[PeerConnectionAgent] Created capture for monitor %d (dx=%s)\n",
+                       indices[i], use_directx ? "yes" : "no");
             }
         }
 

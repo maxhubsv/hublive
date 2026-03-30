@@ -4,6 +4,7 @@
 #include "signaling_client.h"
 #include "peer_connection_agent.h"
 
+#include <winsock2.h>
 #include <windows.h>
 #include <objbase.h>
 
@@ -24,13 +25,47 @@ void SignalHandler(int sig) {
 }
 
 int main(int argc, char* argv[]) {
+    // Disable abort dialog — log and exit cleanly instead of showing popup.
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+
+    // libwebrtc built with is_debug=false — minimal logging by default.
+
+    // Initialize Winsock (required before any network operations).
+    WSADATA wsa_data;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
+        printf("ERROR: WSAStartup failed\n");
+        return 1;
+    }
+
     // Initialize COM for WASAPI audio capture.
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
+    // Resolve config path relative to exe location (for double-click launch).
     std::string config_path = "config.yaml";
-    if (argc > 1) config_path = argv[1];
+    if (argc > 1) {
+        config_path = argv[1];
+    } else {
+        // Get directory of the exe itself.
+        char exe_path[MAX_PATH] = {};
+        GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
+        std::string exe_dir(exe_path);
+        auto pos = exe_dir.find_last_of("\\/");
+        if (pos != std::string::npos) {
+            config_path = exe_dir.substr(0, pos + 1) + "config.yaml";
+        }
+    }
 
     AppConfig config = LoadConfig(config_path);
+
+    // Auto-generate unique identity from hostname if not customized.
+    if (config.agent.identity == "agent-001" || config.agent.identity == "agent-cpp-001") {
+        char hostname[256] = {};
+        DWORD size = sizeof(hostname);
+        GetComputerNameA(hostname, &size);
+        config.agent.identity = std::string("agent-") + hostname;
+        config.agent.name = std::string("Screen Agent ") + hostname;
+    }
 
     printf("=== HubLive Screen Agent (C++) ===\n");
     printf("  Server:  %s\n", config.hublive.url.c_str());
@@ -211,5 +246,6 @@ int main(int argc, char* argv[]) {
     printf("  Agent stopped.\n");
 
     CoUninitialize();
+    WSACleanup();
     return 0;
 }

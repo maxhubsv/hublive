@@ -3,30 +3,24 @@
     "title": "HubLive",
     "loading": "Đang tải...",
     "error": "Đã xảy ra lỗi",
-    "retry": "Thử lại",
-    "noData": "Không có dữ liệu",
-    "save": "Lưu",
-    "cancel": "Hủy",
-    "confirm": "Xác nhận",
-    "delete": "Xóa"
+    "unexpectedError": "Lỗi không mong muốn xảy ra",
+    "tryAgain": "Thử lại",
+    "somethingWentWrong": "Đã xảy ra sự cố"
   },
   "auth": {
     "login": "Đăng nhập",
     "logout": "Đăng xuất",
     "email": "Email",
+    "emailPlaceholder": "admin@hublive.io",
     "password": "Mật khẩu",
     "loginButton": "Đăng nhập",
+    "loginSuccess": "Đăng nhập thành công",
     "loginError": "Đăng nhập thất bại"
   },
   "sidebar": {
     "dashboard": "Bảng điều khiển",
     "streaming": "Phát trực tiếp",
     "settings": "Cài đặt"
-  },
-  "header": {
-    "search": "Tìm kiếm...",
-    "language": "Ngôn ngữ",
-    "theme": "Giao diện"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -40,7 +34,33 @@
     "connected": "Đã kết nối",
     "disconnected": "Đã ngắt",
     "error": "Lỗi kết nối",
-    "noStream": "Không có luồng nào"
+    "noStream": "Không có luồng nào",
+    "mouse": "Chuột",
+    "keyboard": "Bàn phím",
+    "clickToControl": "Nhấn để bật điều khiển",
+    "pressEscapeToRelease": "Nhấn Escape để thoát"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "subtitle": "Tùy chỉnh giao diện và cấu hình ứng dụng",
+    "appearance": "Giao diện",
+    "language": "Ngôn ngữ",
+    "languageDesc": "Chọn ngôn ngữ hiển thị cho ứng dụng",
+    "theme": "Chủ đề",
+    "themeDesc": "Chủ đề tối đang được sử dụng",
+    "dark": "Tối",
+    "streaming": "Phát trực tiếp",
+    "serverUrl": "Địa chỉ máy chủ",
+    "serverUrlDesc": "URL WebSocket của máy chủ LiveKit",
+    "roomName": "Tên phòng",
+    "roomNameDesc": "Tên phòng mặc định để kết nối",
+    "autoConnect": "Tự động kết nối",
+    "autoConnectDesc": "Tự động kết nối khi mở trang phát trực tiếp",
+    "save": "Lưu",
+    "about": "Thông tin",
+    "aboutDesc": "Nền tảng phát trực tiếp màn hình qua WebRTC",
+    "version": "Phiên bản",
+    "techStack": "Công nghệ"
   },
   "test": {
     "title": "Trang kiểm tra hệ thống",
@@ -50,10 +70,8 @@
     "themeWorks": "Theme hoạt động",
     "componentsWork": "Components hoạt động",
     "currentLocale": "Ngôn ngữ hiện tại",
-    "switchLocale": "Chuyển ngôn ngữ",
-    "navigateTo": "Điều hướng đến",
     "description": "Nhấn vào các liên kết để kiểm tra routing SPA",
-    "colorPalette": "Bảng màu Design System",
-    "buttonVariants": "Các biến thể Button"
+    "buttonVariants": "Các biến thể Button",
+    "reset": "Đặt lại"
   }
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import { useLogin } from "../hooks/useAuth";
 
 export default function LoginPage() {
@@ -23,32 +24,30 @@ export default function LoginPage() {
         <div>
           <label
             htmlFor="email"
-            className="mb-[4px] block text-body font-medium text-text-secondary"
+            className="mb-micro block text-body font-medium text-text-secondary"
           >
             {t("auth.email")}
           </label>
-          <input
+          <Input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-bg-tertiary bg-bg-primary px-tight py-element text-body text-text-primary placeholder:text-text-secondary focus:border-accent focus:outline-none"
-            placeholder="admin@hublive.io"
+            placeholder={t("auth.emailPlaceholder")}
           />
         </div>
         <div>
           <label
             htmlFor="password"
-            className="mb-[4px] block text-body font-medium text-text-secondary"
+            className="mb-micro block text-body font-medium text-text-secondary"
           >
             {t("auth.password")}
           </label>
-          <input
+          <Input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-bg-tertiary bg-bg-primary px-tight py-element text-body text-text-primary placeholder:text-text-secondary focus:border-accent focus:outline-none"
           />
         </div>
         <Button type="submit" className="w-full" disabled={login.isPending}>

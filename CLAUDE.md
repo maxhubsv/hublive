@@ -120,3 +120,11 @@ Currently minimal (single HTML file using HubLive JS SDK from CDN). Full React a
 - SERVER's `pkg/sfu/` is the core media engine — avoid modifying it
 - SERVER uses Wire for DI — edit `service/wire.go` and run `mage generate`, never edit `wire_gen.go` directly
 - Protobuf files in `CLIENT/proto/` define the HubLive signaling protocol — regeneration requires protoc
+
+## Icon & Image Quality Rules (MANDATORY)
+
+- **NEVER** use text characters as icons (e.g. "✓", "!", "H") — ALWAYS use proper Lucide React SVG icons
+- **NEVER** resize images to reduce quality — load assets at the exact size needed
+- Use SVG icons for all UI elements to ensure pixel-perfect rendering at any scale
+- Lucide icons: minimum 20px (`size-icon-sm`), `stroke-width: 1.5px` globally via CSS for crispness
+- Icon sizes are defined as design tokens in `globals.css @theme`: `--size-icon-sm` (20px), `--size-icon-md` (36px), `--size-icon-lg` (44px)

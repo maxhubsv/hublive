@@ -13,26 +13,26 @@
 #include <cstdio>
 #include <thread>
 
-webrtc::scoped_refptr<ScreenCaptureSource> ScreenCaptureSource::Create(int monitor_index, int fps) {
-    return webrtc::make_ref_counted<ScreenCaptureSource>(monitor_index, fps);
+webrtc::scoped_refptr<ScreenCaptureSource> ScreenCaptureSource::Create(int monitor_index, int fps, bool use_directx) {
+    return webrtc::make_ref_counted<ScreenCaptureSource>(monitor_index, fps, use_directx);
 }
 
-ScreenCaptureSource::ScreenCaptureSource(int monitor_index, int fps)
+ScreenCaptureSource::ScreenCaptureSource(int monitor_index, int fps, bool use_directx)
     : monitor_index_(monitor_index), fps_(fps) {
     auto options = webrtc::DesktopCaptureOptions::CreateDefault();
-    options.set_allow_directx_capturer(true);
+    options.set_allow_directx_capturer(use_directx);
 
     auto screen_capturer = webrtc::DesktopCapturer::CreateScreenCapturer(options);
     if (!screen_capturer) {
-        printf("  [capture] ERROR: Failed to create screen capturer\n");
+        printf("  [capture] ERROR: Failed to create screen capturer for monitor %d\n", monitor_index);
         return;
     }
 
     webrtc::DesktopCapturer::SourceList sources;
     if (screen_capturer->GetSourceList(&sources) && monitor_index < static_cast<int>(sources.size())) {
         screen_capturer->SelectSource(sources[monitor_index].id);
-        printf("  [capture] Selected monitor %d: %s\n", monitor_index,
-               sources[monitor_index].title.c_str());
+        printf("  [capture] Selected monitor %d: %s (directx=%s)\n", monitor_index,
+               sources[monitor_index].title.c_str(), use_directx ? "on" : "off");
     } else if (!sources.empty()) {
         screen_capturer->SelectSource(sources[0].id);
         printf("  [capture] Fallback to monitor 0\n");

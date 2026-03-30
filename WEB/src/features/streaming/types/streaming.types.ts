@@ -5,19 +5,6 @@ export type ConnectionState =
   | "disconnected"
   | "error";
 
-export interface RoomConfig {
-  url: string;
-  roomName: string;
-  apiKey: string;
-  apiSecret: string;
-}
-
-export interface StreamTrack {
-  sid: string;
-  kind: "video" | "audio";
-  participantIdentity: string;
-}
-
 // --- Input Event Protocol (matches C++ agent) ---
 
 /** Mouse action codes */
@@ -48,7 +35,7 @@ export interface MouseInputEvent {
   a: (typeof MouseAction)[keyof typeof MouseAction];
   x: number;
   y: number;
-  b: 0 | 1 | 2 | 3 | 4;
+  b: number;
   d: number;
 }
 
@@ -56,7 +43,7 @@ export interface KeyboardInputEvent {
   t: 2;
   s: number;
   a: (typeof KeyAction)[keyof typeof KeyAction];
-  k: number;
+  k: string;
   m: number;
 }
 

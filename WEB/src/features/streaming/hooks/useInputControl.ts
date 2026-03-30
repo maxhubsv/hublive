@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   MouseAction,
   KeyAction,
+  Modifier,
   type InputEvent,
 } from "../types/streaming.types";
 import { MOUSE_THROTTLE_MS } from "@/shared/constants";
@@ -13,15 +14,15 @@ interface UseInputControlOptions {
 
 function getModifiers(e: KeyboardEvent | MouseEvent): number {
   let m = 0;
-  if (e.ctrlKey) m |= 1;
-  if (e.shiftKey) m |= 2;
-  if (e.altKey) m |= 4;
-  if (e.metaKey) m |= 8;
+  if (e.ctrlKey) m |= Modifier.Ctrl;
+  if (e.shiftKey) m |= Modifier.Shift;
+  if (e.altKey) m |= Modifier.Alt;
+  if (e.metaKey) m |= Modifier.Meta;
   return m;
 }
 
 function getNormalizedCoords(
-  e: MouseEvent,
+  e: { clientX: number; clientY: number },
   videoEl: HTMLVideoElement,
 ): { x: number; y: number } {
   const rect = videoEl.getBoundingClientRect();
@@ -38,7 +39,7 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
   const seqRef = useRef(0);
   const lastMoveRef = useRef(0);
 
-  const nextSeq = () => ++seqRef.current;
+  const nextSeq = (): number => ++seqRef.current;
 
   // --- Activate / deactivate ---
 
@@ -65,7 +66,7 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
       const { x, y } = getNormalizedCoords(e.nativeEvent, vid);
       sendInput(
         { t: 1, s: nextSeq(), a: MouseAction.Move, x, y, b: 0, d: 0 },
-        false, // lossy for moves
+        false,
       );
     },
     [controlActive, mouseEnabled, sendInput, videoRef],
@@ -80,15 +81,7 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
 
       const { x, y } = getNormalizedCoords(e.nativeEvent, vid);
       sendInput(
-        {
-          t: 1,
-          s: nextSeq(),
-          a: MouseAction.Down,
-          x,
-          y,
-          b: e.button as 0 | 1 | 2 | 3 | 4,
-          d: 0,
-        },
+        { t: 1, s: nextSeq(), a: MouseAction.Down, x, y, b: e.button, d: 0 },
         true,
       );
     },
@@ -104,15 +97,7 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
 
       const { x, y } = getNormalizedCoords(e.nativeEvent, vid);
       sendInput(
-        {
-          t: 1,
-          s: nextSeq(),
-          a: MouseAction.Up,
-          x,
-          y,
-          b: e.button as 0 | 1 | 2 | 3 | 4,
-          d: 0,
-        },
+        { t: 1, s: nextSeq(), a: MouseAction.Up, x, y, b: e.button, d: 0 },
         true,
       );
     },
@@ -126,17 +111,9 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
       if (!vid) return;
       e.preventDefault();
 
-      const { x, y } = getNormalizedCoords(e.nativeEvent as unknown as MouseEvent, vid);
+      const { x, y } = getNormalizedCoords(e.nativeEvent, vid);
       sendInput(
-        {
-          t: 1,
-          s: nextSeq(),
-          a: MouseAction.Wheel,
-          x,
-          y,
-          b: 0,
-          d: e.deltaY > 0 ? 1 : -1,
-        },
+        { t: 1, s: nextSeq(), a: MouseAction.Wheel, x, y, b: 0, d: e.deltaY > 0 ? 1 : -1 },
         true,
       );
     },
@@ -149,13 +126,11 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
     (e: React.KeyboardEvent) => {
       if (!controlActive) return;
 
-      // Escape deactivates control
       if (e.key === "Escape") {
         deactivate();
         return;
       }
 
-      // Let F11/F12 pass through (fullscreen / devtools)
       if (e.key === "F11" || e.key === "F12") return;
 
       if (!keyboardEnabled) return;
@@ -166,7 +141,7 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
           t: 2,
           s: nextSeq(),
           a: KeyAction.Down,
-          k: e.keyCode,
+          k: e.code,
           m: getModifiers(e.nativeEvent),
         },
         true,
@@ -186,7 +161,7 @@ export function useInputControl({ sendInput, videoRef }: UseInputControlOptions)
           t: 2,
           s: nextSeq(),
           a: KeyAction.Up,
-          k: e.keyCode,
+          k: e.code,
           m: getModifiers(e.nativeEvent),
         },
         true,

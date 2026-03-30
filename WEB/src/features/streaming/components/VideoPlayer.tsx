@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/utils/cn";
+import { Spinner } from "@/shared/ui/spinner";
 import type { ConnectionState } from "../types/streaming.types";
 
 interface VideoPlayerProps {
@@ -61,10 +62,10 @@ export function VideoPlayer({
       onContextMenu={handlers.onContextMenu}
     >
       {/* Status badge */}
-      <div className="absolute left-tight top-tight z-10 flex items-center gap-element rounded-full bg-bg-primary/80 px-tight py-[4px] backdrop-blur-sm">
+      <div className="absolute left-tight top-tight z-10 flex items-center gap-element rounded-full bg-bg-primary/80 px-tight py-micro backdrop-blur-sm">
         <span
           className={cn(
-            "size-[8px] rounded-full",
+            "size-dot rounded-full",
             STATUS_STYLES[connectionState],
             connectionState === "connecting" && "animate-pulse",
           )}
@@ -86,12 +87,12 @@ export function VideoPlayer({
       {/* Click-to-activate hint */}
       {connectionState === "connected" && !controlActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity">
-          <div className="rounded-lg bg-bg-primary/90 px-page py-tight backdrop-blur-sm text-center">
+          <div className="rounded-lg bg-bg-primary/90 px-page py-tight text-center backdrop-blur-sm">
             <p className="text-body font-medium text-text-primary">
-              Click to enable control
+              {t("stream.clickToControl")}
             </p>
-            <p className="mt-[2px] text-caption text-text-secondary">
-              Press Escape to release
+            <p className="mt-hairline text-caption text-text-secondary">
+              {t("stream.pressEscapeToRelease")}
             </p>
           </div>
         </div>
@@ -107,7 +108,7 @@ export function VideoPlayer({
       {/* Connecting spinner */}
       {connectionState === "connecting" && (
         <div className="absolute inset-0 flex items-center justify-center bg-bg-primary/60">
-          <div className="size-spinner animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <Spinner />
         </div>
       )}
     </div>

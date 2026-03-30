@@ -3,30 +3,24 @@
     "title": "HubLive",
     "loading": "Loading...",
     "error": "An error occurred",
-    "retry": "Retry",
-    "noData": "No data",
-    "save": "Save",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "delete": "Delete"
+    "unexpectedError": "An unexpected error occurred",
+    "tryAgain": "Try again",
+    "somethingWentWrong": "Something went wrong"
   },
   "auth": {
     "login": "Login",
     "logout": "Logout",
     "email": "Email",
+    "emailPlaceholder": "admin@hublive.io",
     "password": "Password",
     "loginButton": "Sign In",
+    "loginSuccess": "Login successful",
     "loginError": "Login failed"
   },
   "sidebar": {
     "dashboard": "Dashboard",
     "streaming": "Streaming",
     "settings": "Settings"
-  },
-  "header": {
-    "search": "Search...",
-    "language": "Language",
-    "theme": "Theme"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -40,7 +34,33 @@
     "connected": "Connected",
     "disconnected": "Disconnected",
     "error": "Connection error",
-    "noStream": "No streams available"
+    "noStream": "No streams available",
+    "mouse": "Mouse",
+    "keyboard": "Keyboard",
+    "clickToControl": "Click to enable control",
+    "pressEscapeToRelease": "Press Escape to release"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Customize appearance and configure the application",
+    "appearance": "Appearance",
+    "language": "Language",
+    "languageDesc": "Choose the display language for the application",
+    "theme": "Theme",
+    "themeDesc": "Dark theme is currently active",
+    "dark": "Dark",
+    "streaming": "Streaming",
+    "serverUrl": "Server URL",
+    "serverUrlDesc": "WebSocket URL of the LiveKit server",
+    "roomName": "Room Name",
+    "roomNameDesc": "Default room name to connect to",
+    "autoConnect": "Auto Connect",
+    "autoConnectDesc": "Automatically connect when opening the streaming page",
+    "save": "Save",
+    "about": "About",
+    "aboutDesc": "Remote screen streaming platform via WebRTC",
+    "version": "Version",
+    "techStack": "Tech Stack"
   },
   "test": {
     "title": "System Test Page",
@@ -50,10 +70,8 @@
     "themeWorks": "Theme works",
     "componentsWork": "Components work",
     "currentLocale": "Current locale",
-    "switchLocale": "Switch language",
-    "navigateTo": "Navigate to",
     "description": "Click the links to test SPA routing",
-    "colorPalette": "Design System Color Palette",
-    "buttonVariants": "Button Variants"
+    "buttonVariants": "Button Variants",
+    "reset": "Reset"
   }
 }

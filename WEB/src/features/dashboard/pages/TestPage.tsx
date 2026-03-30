@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { StatusBadge } from "@/shared/ui/status-badge";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/shared/constants";
 
 const DEFAULT_COLORS = [
@@ -56,11 +57,9 @@ export default function TestPage() {
 
       <div className="grid min-h-0 flex-1 gap-section md:grid-cols-2">
         {/* Routing */}
-        <section className="overflow-hidden rounded-lg border border-bg-tertiary bg-bg-secondary p-section">
+        <Card>
           <div className="mb-element flex items-center gap-element">
-            <span className="flex size-icon-md items-center justify-center rounded-full bg-success/20 text-success">
-              ✓
-            </span>
+            <StatusBadge />
             <h2 className="text-section-title font-semibold">{t("test.routingWorks")}</h2>
           </div>
           <p className="mb-element text-body text-text-secondary">{t("test.description")}</p>
@@ -75,14 +74,12 @@ export default function TestPage() {
               </Link>
             ))}
           </div>
-        </section>
+        </Card>
 
         {/* i18n */}
-        <section className="overflow-hidden rounded-lg border border-bg-tertiary bg-bg-secondary p-section">
+        <Card>
           <div className="mb-element flex items-center gap-element">
-            <span className="flex size-icon-md items-center justify-center rounded-full bg-success/20 text-success">
-              ✓
-            </span>
+            <StatusBadge />
             <h2 className="text-section-title font-semibold">{t("test.i18nWorks")}</h2>
           </div>
           <p className="mb-element text-body text-text-secondary">
@@ -101,19 +98,17 @@ export default function TestPage() {
               </Button>
             ))}
           </div>
-        </section>
+        </Card>
 
         {/* Theme / Color Picker */}
-        <section className="overflow-hidden rounded-lg border border-bg-tertiary bg-bg-secondary p-section">
+        <Card>
           <div className="mb-element flex items-center justify-between">
             <div className="flex items-center gap-element">
-              <span className="flex size-icon-md items-center justify-center rounded-full bg-success/20 text-success">
-                ✓
-              </span>
+              <StatusBadge />
               <h2 className="text-section-title font-semibold">{t("test.themeWorks")}</h2>
             </div>
             <Button variant="ghost" size="sm" onClick={resetColors}>
-              Reset
+              {t("test.reset")}
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-x-section gap-y-tight sm:grid-cols-3 lg:grid-cols-4">
@@ -136,21 +131,19 @@ export default function TestPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-caption text-text-primary">{swatch.name}</p>
-                  <p className="font-mono text-micro text-text-secondary uppercase">
+                  <p className="font-mono text-micro uppercase text-text-secondary">
                     {swatch.hex}
                   </p>
                 </div>
               </label>
             ))}
           </div>
-        </section>
+        </Card>
 
         {/* Components */}
-        <section className="overflow-hidden rounded-lg border border-bg-tertiary bg-bg-secondary p-section">
+        <Card>
           <div className="mb-element flex items-center gap-element">
-            <span className="flex size-icon-md items-center justify-center rounded-full bg-success/20 text-success">
-              ✓
-            </span>
+            <StatusBadge />
             <h2 className="text-section-title font-semibold">{t("test.componentsWork")}</h2>
           </div>
           <p className="mb-element text-body text-text-secondary">
@@ -164,7 +157,7 @@ export default function TestPage() {
             <Button variant="destructive">Destructive</Button>
             <Button variant="link">Link</Button>
           </div>
-        </section>
+        </Card>
       </div>
     </div>
   );

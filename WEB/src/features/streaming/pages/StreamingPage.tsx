@@ -18,7 +18,6 @@ export default function StreamingPage() {
     handlers,
   } = useInputControl({ sendInput, videoRef });
 
-  // Auto-connect on mount
   useEffect(() => {
     connect();
     return () => disconnect();
@@ -28,12 +27,10 @@ export default function StreamingPage() {
 
   return (
     <div className="flex h-full flex-col gap-tight overflow-hidden">
-      {/* Header bar */}
       <div className="flex shrink-0 items-center justify-between">
         <h1 className="text-page-title font-bold">{t("stream.title")}</h1>
 
         <div className="flex items-center gap-tight">
-          {/* Control toggles */}
           {isConnected && (
             <div className="flex items-center gap-tight text-body">
               <label className="flex cursor-pointer items-center gap-tight text-text-secondary">
@@ -43,7 +40,7 @@ export default function StreamingPage() {
                   onChange={(e) => setMouseEnabled(e.target.checked)}
                   className="accent-accent"
                 />
-                Mouse
+                {t("stream.mouse")}
               </label>
               <label className="flex cursor-pointer items-center gap-tight text-text-secondary">
                 <input
@@ -52,12 +49,11 @@ export default function StreamingPage() {
                   onChange={(e) => setKeyboardEnabled(e.target.checked)}
                   className="accent-accent"
                 />
-                Keyboard
+                {t("stream.keyboard")}
               </label>
             </div>
           )}
 
-          {/* Connect / Disconnect */}
           {connectionState === "idle" ||
           connectionState === "disconnected" ||
           connectionState === "error" ? (
@@ -72,7 +68,6 @@ export default function StreamingPage() {
         </div>
       </div>
 
-      {/* Video area — fills remaining space */}
       <div className="min-h-0 flex-1">
         <VideoPlayer
           videoRef={videoRef}

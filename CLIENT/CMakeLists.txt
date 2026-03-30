@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --------------------------------------------------------------------------
-# Paths to libwebrtc (built with GN + Clang, default debug config)
+# Paths to libwebrtc (built with GN + Clang, Release config: is_debug=false)
 # --------------------------------------------------------------------------
 set(WEBRTC_SRC "f:/webrtc-checkout/src")
 set(WEBRTC_OUT "${WEBRTC_SRC}/out/Release")
@@ -155,6 +155,12 @@ target_compile_definitions(screen_agent PRIVATE
 # --------------------------------------------------------------------------
 set(WEBRTC_LIB "${WEBRTC_OBJ}/webrtc.lib")
 
+# Libs with symbols stripped from webrtc.lib in Release builds — link explicitly.
+set(WEBRTC_EXTRA_LIBS
+    "${WEBRTC_OBJ}/rtc_base/checks.lib"
+    "${WEBRTC_OBJ}/rtc_base/synchronization/sequence_checker_internal.lib"
+)
+
 # Additional WebRTC component libraries not bundled in webrtc.lib.
 # The GN build produces hundreds of small .lib archives; we glob them all
 # and let the linker pull in only what is actually referenced.
@@ -180,6 +186,7 @@ set(PROTOBUF_LITE_LIB "${WEBRTC_OBJ}/third_party/protobuf/protobuf_lite.lib")
 
 target_link_libraries(screen_agent PRIVATE
     ${WEBRTC_LIB}
+    ${WEBRTC_EXTRA_LIBS}
     ${WEBRTC_COMPONENT_LIBS}
     ${PROTOBUF_FULL_LIB}
     ${PROTOBUF_LITE_LIB}
@@ -217,14 +224,15 @@ target_link_libraries(screen_agent PRIVATE
 # --------------------------------------------------------------------------
 # Compiler and linker flags
 # --------------------------------------------------------------------------
-# Match the CRT used by the webrtc build (/MTd = debug static CRT).
-set_property(TARGET screen_agent PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
+# Match the CRT used by the webrtc build.
+# is_debug=false -> /MT (Release), is_debug=true -> /MTd (Debug)
+set_property(TARGET screen_agent PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
 # Disable RTTI to match libwebrtc (/GR-). Keep C++ exceptions (/EHsc).
-target_compile_options(screen_agent PRIVATE /GR- /EHsc /W3)
+target_compile_options(screen_agent PRIVATE /GR- /EHsc /W3 /O2)
 
 # Linker flags matching webrtc build
 target_link_options(screen_agent PRIVATE
-    /NODEFAULTLIB:libcmt.lib
-    /DEFAULTLIB:libcpmtd.lib
+    /NODEFAULTLIB:libcmtd.lib
+    /DEFAULTLIB:libcpmt.lib
 )

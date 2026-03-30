@@ -1,6 +1,6 @@
 # HubLive Server connection
 hublive:
-  url: "ws://localhost:7880"
+  url: "ws://103.89.94.96:7880"
   api_key: "devkey"
   api_secret: "secret"
 

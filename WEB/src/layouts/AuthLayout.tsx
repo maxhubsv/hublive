@@ -1,4 +1,5 @@
 import { Outlet } from "react-router";
+import { Monitor } from "lucide-react";
 import { APP_NAME } from "@/shared/constants";
 
 export function AuthLayout() {
@@ -7,7 +8,7 @@ export function AuthLayout() {
       <div className="w-full max-w-md rounded-lg border border-bg-tertiary bg-bg-secondary p-page">
         <div className="mb-page flex items-center justify-center gap-element">
           <div className="flex size-icon-lg items-center justify-center rounded-lg bg-accent">
-            <span className="text-section-title font-bold text-white">H</span>
+            <Monitor className="size-icon-md text-white" />
           </div>
           <span className="text-page-title font-semibold">{APP_NAME}</span>
         </div>
