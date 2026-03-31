@@ -1,4 +1,5 @@
 #include "config.h"
+#include "logger.h"
 #include "jwt_token.h"
 #include "websocket_transport.h"
 #include "signaling_client.h"
@@ -8,7 +9,6 @@
 #include <windows.h>
 #include <objbase.h>
 
-#include <cstdio>
 #include <cstdlib>
 #include <csignal>
 #include <ctime>
@@ -20,33 +20,33 @@
 static std::atomic<bool> g_running{true};
 
 void SignalHandler(int sig) {
-    printf("\n  Shutting down...\n");
+    LogInfo("main", "Shutdown signal received");
     g_running = false;
 }
 
 int main(int argc, char* argv[]) {
-    // Disable abort dialog — log and exit cleanly instead of showing popup.
+    // Disable crash dialogs for production.
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 
-    // libwebrtc built with is_debug=false — minimal logging by default.
+    // Silence libwebrtc internal logs.
+    freopen("NUL", "w", stderr);
 
-    // Initialize Winsock (required before any network operations).
+    // Initialize Winsock.
     WSADATA wsa_data;
     if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
-        printf("ERROR: WSAStartup failed\n");
+        fprintf(stdout, "FATAL: WSAStartup failed\n");
         return 1;
     }
 
-    // Initialize COM for WASAPI audio capture.
+    // Initialize COM for WASAPI audio.
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    // Resolve config path relative to exe location (for double-click launch).
+    // Resolve config path relative to exe location.
     std::string config_path = "config.yaml";
     if (argc > 1) {
         config_path = argv[1];
     } else {
-        // Get directory of the exe itself.
         char exe_path[MAX_PATH] = {};
         GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
         std::string exe_dir(exe_path);
@@ -58,7 +58,13 @@ int main(int argc, char* argv[]) {
 
     AppConfig config = LoadConfig(config_path);
 
-    // Auto-generate unique identity from hostname if not customized.
+    // Setup logger from config.
+    Logger::Instance().SetLevel(config.log.level);
+    if (!config.log.file.empty()) {
+        Logger::Instance().SetFileOutput(config.log.file);
+    }
+
+    // Auto-generate unique identity from hostname.
     if (config.agent.identity == "agent-001" || config.agent.identity == "agent-cpp-001") {
         char hostname[256] = {};
         DWORD size = sizeof(hostname);
@@ -67,92 +73,65 @@ int main(int argc, char* argv[]) {
         config.agent.name = std::string("Screen Agent ") + hostname;
     }
 
-    printf("=== HubLive Screen Agent (C++) ===\n");
-    printf("  Server:  %s\n", config.hublive.url.c_str());
-    printf("  Room:    %s\n", config.room.name.c_str());
-    printf("  Agent:   %s (%s)\n", config.agent.identity.c_str(), config.agent.name.c_str());
-    printf("  Capture: monitor=%s fps=%d scale=%.1f\n",
-           config.capture.monitor.c_str(), config.capture.fps, config.capture.scale);
-    printf("  Audio:   system=%s mic=%s sys_gain=%.1f mic_gain=%.1f\n",
-           config.audio.system_enabled ? "on" : "off",
-           config.audio.mic_enabled ? "on" : "off",
-           config.audio.system_gain, config.audio.mic_gain);
-    printf("  Control: enabled=%s mouse=%s keyboard=%s\n",
-           config.control.enabled ? "on" : "off",
-           config.control.mouse ? "on" : "off",
-           config.control.keyboard ? "on" : "off");
-    printf("\n");
+    LogInfo("main", "=== HubLive Screen Agent ===");
+    LogInfo("main", "Server:  %s", config.hublive.url.c_str());
+    LogInfo("main", "Room:    %s", config.room.name.c_str());
+    LogInfo("main", "Agent:   %s (%s)", config.agent.identity.c_str(), config.agent.name.c_str());
+    LogInfo("main", "Capture: monitor=%s fps=%d", config.capture.monitor.c_str(), config.capture.fps);
+    LogInfo("main", "Audio:   system=%s mic=%s", config.audio.system_enabled ? "on" : "off", config.audio.mic_enabled ? "on" : "off");
+    LogInfo("main", "Control: %s", config.control.enabled ? "on" : "off");
+    LogInfo("main", "Log:     level=%s", config.log.level.c_str());
 
-    // Handle Ctrl+C — registered once, before the retry loop.
     std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);
-
-    // Seed the random number generator for backoff jitter.
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    // Create persistent objects that survive across reconnection attempts.
-    // The WebSocket, SignalingClient, and PeerConnectionAgent are created once;
-    // on reconnect we Reset/Disconnect them rather than destroying/recreating.
     WebSocketTransport ws;
     SignalingClient signaling(&ws);
     PeerConnectionAgent agent(&signaling, config);
 
-    // One-time WebRTC initialization (factory, threads, screen capture source).
     if (!agent.Initialize()) {
-        printf("  ERROR: Failed to initialize WebRTC\n");
+        LogError("main", "Failed to initialize WebRTC");
         return 1;
     }
 
-    // ----- Retry loop with exponential backoff + jitter -----
+    // Retry loop with exponential backoff + jitter.
     int retry_count = 0;
-    const int kMaxBackoffSeconds = 30;
+    const int kMaxBackoff = 30;
 
     while (g_running) {
-        // --- Backoff delay (skipped on the first attempt) ---
         if (retry_count > 0) {
-            int delay = std::min(kMaxBackoffSeconds, (1 << retry_count));
-            delay += std::rand() % 3;  // +0..2s jitter
-            printf("  Reconnecting in %d seconds (attempt #%d)...\n",
-                   delay, retry_count + 1);
-
-            // Sleep in 1-second increments so we can break early on Ctrl+C.
-            for (int i = 0; i < delay && g_running; ++i) {
+            int delay = std::min(kMaxBackoff, (1 << retry_count)) + std::rand() % 3;
+            LogInfo("main", "Reconnecting in %ds (attempt #%d)...", delay, retry_count + 1);
+            for (int i = 0; i < delay && g_running; ++i)
                 std::this_thread::sleep_for(std::chrono::seconds(1));
-            }
             if (!g_running) break;
         }
 
-        // --- Generate a fresh JWT for each attempt ---
         std::string token = GenerateAccessToken(config);
-        printf("  Token generated\n");
+        LogDebug("main", "JWT token generated");
 
-        // --- Prepare transport + signaling for a (re-)connection ---
         ws.Reset();
         signaling.Reset();
-        agent.Disconnect();  // no-op on the very first iteration (no PC exists yet)
+        agent.Disconnect();
 
-        // --- Register the WebSocket close handler ---
-        // We use a local flag so the main-loop below can detect a WS drop
-        // independently of PeerConnection state.
         std::atomic<bool> ws_alive{true};
-
         ws.SetOnClose([&ws_alive](int code, const std::string& reason) {
-            printf("  [ws] Closed: %s\n", reason.c_str());
+            LogWarn("ws", "Closed: %s (code=%d)", reason.c_str(), code);
             ws_alive = false;
         });
         ws.SetOnError([](const std::string& error) {
-            printf("  [ws] Error: %s\n", error.c_str());
+            LogError("ws", "%s", error.c_str());
         });
 
-        // --- Attempt WebSocket connection ---
-        printf("  Trying HubLive WebSocket to %s...\n", config.hublive.url.c_str());
+        LogInfo("main", "Connecting to %s...", config.hublive.url.c_str());
         bool ws_connected = ws.Connect(config.hublive.url, token);
 
         bool whip_mode = false;
         bool connection_ok = false;
 
         if (!ws_connected) {
-            printf("  WebSocket failed, falling back to WHIP...\n");
+            LogWarn("main", "WebSocket failed, trying WHIP fallback...");
 
             std::string whip_url = config.hublive.url;
             if (whip_url.substr(0, 5) == "ws://")
@@ -163,87 +142,63 @@ int main(int argc, char* argv[]) {
             agent.FallbackToWhip(whip_url, token);
             whip_mode = true;
 
-            // Check that WHIP actually succeeded (PC was created and is not
-            // already in a failed state).
             if (agent.IsConnected() || !agent.IsDisconnected()) {
-                printf("  WHIP signaling complete\n\n");
+                LogInfo("main", "WHIP connected");
                 connection_ok = true;
             } else {
-                printf("  WHIP fallback failed\n");
+                LogError("main", "WHIP fallback failed");
             }
         } else {
-            printf("  WebSocket connected\n\n");
+            LogInfo("main", "WebSocket connected");
             connection_ok = true;
         }
 
-        // --- Reset retry counter only on successful connection ---
         if (connection_ok) {
             retry_count = 0;
         } else {
-            // Both WS and WHIP failed — skip the inner loop, go straight
-            // to the retry delay.
-            if (g_running) {
-                printf("\n  Connection failed.  Preparing to retry...\n");
-                retry_count++;
-            }
+            if (g_running) retry_count++;
             continue;
         }
 
-        // --- Main loop — keepalive ping + disconnect detection ---
-        printf("  Streaming... (Ctrl+C to stop)\n\n");
+        LogInfo("main", "Streaming started");
         int ping_counter = 0;
-        int pong_miss_counter = 0;
-        const int kPingIntervalSec = 10;
-        const int kPongTimeoutMisses = 2;  // after 2 missed pongs (20s) treat as dead
+        int pong_miss = 0;
 
         while (g_running) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
-            // --- Detect PeerConnection failure ---
             if (agent.IsDisconnected()) {
-                printf("  PeerConnection disconnected/failed — will reconnect\n");
+                LogWarn("main", "PeerConnection lost");
                 break;
             }
 
             if (!whip_mode) {
-                // --- WebSocket keepalive ping ---
-                if (++ping_counter >= kPingIntervalSec) {
-                    if (!signaling.SendPing()) {
-                        pong_miss_counter++;
-                    } else {
-                        pong_miss_counter = 0;
-                    }
+                if (++ping_counter >= 10) {
+                    if (!signaling.SendPing()) pong_miss++;
+                    else pong_miss = 0;
                     ping_counter = 0;
                 }
-
-                // --- Detect WebSocket disconnect ---
                 if (!ws_alive || !ws.IsConnected()) {
-                    printf("  WebSocket disconnected — will reconnect\n");
+                    LogWarn("main", "WebSocket lost");
                     break;
                 }
-
-                // --- Detect ping timeout (no successful send for too long) ---
-                if (pong_miss_counter >= kPongTimeoutMisses) {
-                    printf("  Ping timeout (%d consecutive failures) — will reconnect\n",
-                           pong_miss_counter);
+                if (pong_miss >= 2) {
+                    LogWarn("main", "Ping timeout (%d misses)", pong_miss);
                     break;
                 }
             }
         }
 
-        // --- If we broke out due to Ctrl+C, skip the retry ---
         if (!g_running) break;
 
-        // --- Prepare for next iteration ---
-        printf("\n  Connection lost.  Preparing to retry...\n");
+        LogInfo("main", "Connection lost, retrying...");
         retry_count++;
     }
 
-    // --- Final cleanup ---
-    printf("\n  Stopping...\n");
+    LogInfo("main", "Shutting down...");
     agent.Shutdown();
     ws.Close();
-    printf("  Agent stopped.\n");
+    LogInfo("main", "Agent stopped");
 
     CoUninitialize();
     WSACleanup();

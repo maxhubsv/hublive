@@ -1,5 +1,5 @@
 #include "websocket_transport.h"
-#include <cstdio>
+#include "logger.h"
 #include <sstream>
 
 #pragma comment(lib, "winhttp.lib")
@@ -161,7 +161,7 @@ bool WebSocketTransport::Send(const uint8_t* data, size_t len) {
                                       WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE,
                                       (PVOID)data, static_cast<DWORD>(len));
     if (err != ERROR_SUCCESS) {
-        printf("WebSocket send error: %lu\n", err);
+        LogError("ws", "WebSocket send error: %lu", err);
         return false;
     }
     return true;

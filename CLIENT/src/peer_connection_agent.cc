@@ -1,6 +1,7 @@
 #include "peer_connection_agent.h"
 #include "json_lite.h"
 #include "hublive_models.pb.h"
+#include "logger.h"
 
 #include "api/create_peerconnection_factory.h"
 #include "api/create_modular_peer_connection_factory.h"
@@ -17,7 +18,6 @@
 #include "api/set_remote_description_observer_interface.h"
 #include "rtc_base/thread.h"
 
-#include <cstdio>
 #include <cmath>
 #include <functional>
 #include <mutex>
@@ -61,7 +61,7 @@ class SetLocalSdpObserver : public webrtc::SetLocalDescriptionObserverInterface 
 public:
     void OnSetLocalDescriptionComplete(webrtc::RTCError error) override {
         if (!error.ok()) {
-            printf("[PeerConnectionAgent] SetLocalDescription failed: %s\n",
+            LogError("agent", "SetLocalDescription failed: %s",
                    error.message());
         }
     }
@@ -79,7 +79,7 @@ public:
 
     void OnSetRemoteDescriptionComplete(webrtc::RTCError error) override {
         if (!error.ok()) {
-            printf("[PeerConnectionAgent] SetRemoteDescription failed: %s\n",
+            LogError("agent", "SetRemoteDescription failed: %s",
                    error.message());
         }
         if (cb_) cb_(std::move(error));
@@ -108,14 +108,14 @@ bool PeerConnectionAgent::Initialize() {
     signaling_thread_ = webrtc::Thread::Create();
     signaling_thread_->SetName("pc_signaling", nullptr);
     if (!signaling_thread_->Start()) {
-        printf("[PeerConnectionAgent] Failed to start signaling thread\n");
+        LogError("agent", "Failed to start signaling thread");
         return false;
     }
 
     worker_thread_ = webrtc::Thread::Create();
     worker_thread_->SetName("pc_worker", nullptr);
     if (!worker_thread_->Start()) {
-        printf("[PeerConnectionAgent] Failed to start worker thread\n");
+        LogError("agent", "Failed to start worker thread");
         return false;
     }
 
@@ -131,7 +131,7 @@ bool PeerConnectionAgent::Initialize() {
 
     pc_factory_ = webrtc::CreateModularPeerConnectionFactory(std::move(deps));
     if (!pc_factory_) {
-        printf("[PeerConnectionAgent] Failed to create PeerConnectionFactory\n");
+        LogError("agent", "Failed to create PeerConnectionFactory");
         return false;
     }
 
@@ -139,7 +139,7 @@ bool PeerConnectionAgent::Initialize() {
     {
         int monitor_count = GetSystemMetrics(SM_CMONITORS);
         if (monitor_count <= 0) monitor_count = 1;
-        printf("[PeerConnectionAgent] Found %d monitor(s)\n", monitor_count);
+        LogInfo("agent", "Found %d monitor(s)", monitor_count);
 
         std::vector<int> indices;
         if (config_.capture.monitor == "all") {
@@ -166,13 +166,13 @@ bool PeerConnectionAgent::Initialize() {
             if (src) {
                 screen_sources_.push_back(src);
                 track_cids_.push_back("screen_" + std::to_string(indices[i]));
-                printf("[PeerConnectionAgent] Created capture for monitor %d (dx=%s)\n",
+                LogInfo("agent", "Created capture for monitor %d (dx=%s)",
                        indices[i], use_directx ? "yes" : "no");
             }
         }
 
         if (screen_sources_.empty()) {
-            printf("[PeerConnectionAgent] Failed to create any ScreenCaptureSource\n");
+            LogError("agent", "Failed to create any ScreenCaptureSource");
             return false;
         }
     }
@@ -196,13 +196,13 @@ bool PeerConnectionAgent::Initialize() {
         int sw = GetSystemMetrics(SM_CXSCREEN);
         int sh = GetSystemMetrics(SM_CYSCREEN);
         input_injector_.Init(sw, sh);
-        printf("[PeerConnectionAgent] Remote control enabled (screen %dx%d)\n", sw, sh);
+        LogInfo("agent", "Remote control enabled (screen %dx%d)", sw, sh);
     }
 
     // Initialize audio capture (loopback + mic).
     InitAudioCapture();
 
-    printf("[PeerConnectionAgent] Initialized\n");
+    LogInfo("agent", "Initialized");
     return true;
 }
 
@@ -253,11 +253,11 @@ void PeerConnectionAgent::Shutdown() {
 
     ice_connected_ = false;
     disconnected_ = false;
-    printf("[PeerConnectionAgent] Shut down\n");
+    LogInfo("agent", "Shut down");
 }
 
 void PeerConnectionAgent::Disconnect() {
-    printf("[PeerConnectionAgent] Disconnect — tearing down PeerConnection\n");
+    LogInfo("agent", "Disconnect — tearing down PeerConnection");
 
     // Stop audio capture threads.
     StopAudioCapture();
@@ -316,7 +316,7 @@ void PeerConnectionAgent::Disconnect() {
     pending_answer_ = false;
     pending_subscriber_answer_ = false;
 
-    printf("[PeerConnectionAgent] Disconnect complete — ready for reconnect\n");
+    LogInfo("agent", "Disconnect complete — ready for reconnect");
 }
 
 // ---------------------------------------------------------------------------
@@ -327,7 +327,7 @@ void PeerConnectionAgent::FallbackToWhip(const std::string& whip_url,
                                           const std::string& token) {
     signaling_mode_ = SignalingMode::WHIP;
 
-    printf("[PeerConnectionAgent] WHIP fallback to %s\n", whip_url.c_str());
+    LogInfo("agent", "WHIP fallback to %s", whip_url.c_str());
 
     // Create WHIP client.
     hublive::WhipConfig whip_config;
@@ -348,13 +348,13 @@ void PeerConnectionAgent::FallbackToWhip(const std::string& whip_url,
         rtc_config, std::move(pc_deps));
 
     if (!result.ok()) {
-        printf("[PeerConnectionAgent] WHIP: CreatePeerConnection error: %s\n",
+        LogError("agent", "WHIP: CreatePeerConnection error: %s",
                result.error().message());
         return;
     }
 
     peer_connection_ = result.MoveValue();
-    printf("[PeerConnectionAgent] WHIP: PeerConnection created\n");
+    LogInfo("agent", "WHIP: PeerConnection created");
 
     // Add screen tracks (no signaling AddTrack needed for WHIP).
     if (screen_sources_.empty() || !peer_connection_) return;
@@ -365,17 +365,17 @@ void PeerConnectionAgent::FallbackToWhip(const std::string& whip_url,
         std::string track_id = "screen_" + std::to_string(i);
         auto video_track = pc_factory_->CreateVideoTrack(src, track_id);
         if (!video_track) {
-            printf("[PeerConnectionAgent] WHIP: Failed to create video track (monitor %zu)\n", i);
+            LogError("agent", "WHIP: Failed to create video track (monitor %zu)", i);
             continue;
         }
 
         std::string stream_id = "stream_" + std::to_string(i);
         auto add_result = peer_connection_->AddTrack(video_track, {stream_id});
         if (!add_result.ok()) {
-            printf("[PeerConnectionAgent] WHIP: AddTrack error (monitor %zu): %s\n",
+            LogError("agent", "WHIP: AddTrack error (monitor %zu): %s",
                    i, add_result.error().message());
         } else {
-            printf("[PeerConnectionAgent] WHIP: Screen track added (monitor %zu)\n", i);
+            LogInfo("agent", "WHIP: Screen track added (monitor %zu)", i);
         }
     }
 
@@ -385,10 +385,10 @@ void PeerConnectionAgent::FallbackToWhip(const std::string& whip_url,
         if (audio_track) {
             auto audio_add = peer_connection_->AddTrack(audio_track, {"stream_0"});
             if (audio_add.ok()) {
-                printf("[PeerConnectionAgent] WHIP: Audio track added\n");
+                LogInfo("agent", "WHIP: Audio track added");
                 StartAudioCapture();
             } else {
-                printf("[PeerConnectionAgent] WHIP: Audio AddTrack error: %s\n",
+                LogError("agent", "WHIP: Audio AddTrack error: %s",
                        audio_add.error().message());
             }
         }
@@ -406,11 +406,11 @@ void PeerConnectionAgent::FallbackToWhip(const std::string& whip_url,
 // ---------------------------------------------------------------------------
 
 void PeerConnectionAgent::OnJoinResponse(const hublive::JoinResponse& join) {
-    printf("[PeerConnectionAgent] Got JoinResponse (server=%s)\n",
+    LogInfo("agent", "Got JoinResponse (server=%s)",
            join.server_version().c_str());
 
     if (!CreatePeerConnection(join)) {
-        printf("[PeerConnectionAgent] Failed to create PeerConnection\n");
+        LogError("agent", "Failed to create PeerConnection");
         return;
     }
 
@@ -421,16 +421,16 @@ void PeerConnectionAgent::OnJoinResponse(const hublive::JoinResponse& join) {
 }
 
 void PeerConnectionAgent::OnRemoteAnswer(const std::string& sdp) {
-    printf("[PeerConnectionAgent] Got remote answer (%zu bytes)\n", sdp.size());
+    LogInfo("agent", "Got remote answer (%zu bytes)", sdp.size());
 
     if (!peer_connection_) {
-        printf("[PeerConnectionAgent] No PeerConnection for answer\n");
+        LogWarn("agent", "No PeerConnection for answer");
         return;
     }
 
     auto desc = webrtc::CreateSessionDescription(webrtc::SdpType::kAnswer, sdp);
     if (!desc) {
-        printf("[PeerConnectionAgent] Failed to parse answer SDP\n");
+        LogError("agent", "Failed to parse answer SDP");
         return;
     }
 
@@ -439,11 +439,11 @@ void PeerConnectionAgent::OnRemoteAnswer(const std::string& sdp) {
 }
 
 void PeerConnectionAgent::OnRemoteOffer(const std::string& sdp) {
-    printf("[PeerConnectionAgent] Got remote offer (subscriber) (%zu bytes)\n",
+    LogInfo("agent", "Got remote offer (subscriber) (%zu bytes)",
            sdp.size());
 
     if (!pc_factory_) {
-        printf("[PeerConnectionAgent] No factory for subscriber PC\n");
+        LogWarn("agent", "No factory for subscriber PC");
         return;
     }
 
@@ -461,16 +461,16 @@ void PeerConnectionAgent::OnRemoteOffer(const std::string& sdp) {
         auto result = pc_factory_->CreatePeerConnectionOrError(
             rtc_config, std::move(deps));
         if (!result.ok()) {
-            printf("[PeerConnectionAgent] Failed to create subscriber PC\n");
+            LogError("agent", "Failed to create subscriber PC");
             return;
         }
         subscriber_pc_ = result.MoveValue();
-        printf("[PeerConnectionAgent] Subscriber PeerConnection created\n");
+        LogInfo("agent", "Subscriber PeerConnection created");
     }
 
     auto desc = webrtc::CreateSessionDescription(webrtc::SdpType::kOffer, sdp);
     if (!desc) {
-        printf("[PeerConnectionAgent] Failed to parse subscriber offer SDP\n");
+        LogError("agent", "Failed to parse subscriber offer SDP");
         return;
     }
 
@@ -478,7 +478,7 @@ void PeerConnectionAgent::OnRemoteOffer(const std::string& sdp) {
     auto observer = webrtc::make_ref_counted<SetRemoteSdpObserver>(
         [this](webrtc::RTCError error) {
             if (!error.ok()) {
-                printf("[PeerConnectionAgent] Subscriber SetRemoteDesc failed: %s\n",
+                LogError("agent", "Subscriber SetRemoteDesc failed: %s",
                        error.message());
                 return;
             }
@@ -489,7 +489,7 @@ void PeerConnectionAgent::OnRemoteOffer(const std::string& sdp) {
                     // Set local description and send answer to server.
                     std::string sdp;
                     desc->ToString(&sdp);
-                    printf("[PeerConnectionAgent] Subscriber answer created (%zu bytes)\n", sdp.size());
+                    LogInfo("agent", "Subscriber answer created (%zu bytes)", sdp.size());
 
                     auto set_obs = webrtc::make_ref_counted<SetLocalSdpObserver>();
                     auto answer_desc = webrtc::CreateSessionDescription(webrtc::SdpType::kAnswer, sdp);
@@ -499,7 +499,7 @@ void PeerConnectionAgent::OnRemoteOffer(const std::string& sdp) {
                     signaling_->SendAnswer(sdp);
                 },
                 [](webrtc::RTCError error) {
-                    printf("[PeerConnectionAgent] Subscriber CreateAnswer failed: %s\n",
+                    LogError("agent", "Subscriber CreateAnswer failed: %s",
                            error.message());
                 });
             subscriber_pc_->CreateAnswer(create_obs.get(), opts);
@@ -545,7 +545,7 @@ void PeerConnectionAgent::OnRemoteTrickle(const std::string& candidate_json,
     auto candidate = webrtc::IceCandidate::Create(
         sdp_mid, sdp_mline_index, candidate_str, &error);
     if (!candidate) {
-        printf("[PeerConnectionAgent] Failed to parse ICE candidate: %s\n",
+        LogError("agent", "Failed to parse ICE candidate: %s",
                error.description.c_str());
         return;
     }
@@ -555,7 +555,7 @@ void PeerConnectionAgent::OnRemoteTrickle(const std::string& candidate_json,
                                                 : peer_connection_.get();
     if (pc) {
         if (!pc->AddIceCandidate(candidate.get())) {
-            printf("[PeerConnectionAgent] Failed to add ICE candidate (target=%d)\n", target);
+            LogWarn("agent", "Failed to add ICE candidate (target=%d)", target);
         }
     }
 }
@@ -589,13 +589,13 @@ bool PeerConnectionAgent::CreatePeerConnection(
         rtc_config, std::move(pc_deps));
 
     if (!result.ok()) {
-        printf("[PeerConnectionAgent] CreatePeerConnection error: %s\n",
+        LogError("agent", "CreatePeerConnection error: %s",
                result.error().message());
         return false;
     }
 
     peer_connection_ = result.MoveValue();
-    printf("[PeerConnectionAgent] PeerConnection created\n");
+    LogInfo("agent", "PeerConnection created");
     return true;
 }
 
@@ -622,17 +622,17 @@ void PeerConnectionAgent::AddScreenTrack() {
         std::string track_id = "screen_" + std::to_string(i);
         auto video_track = pc_factory_->CreateVideoTrack(src, track_id);
         if (!video_track) {
-            printf("[PeerConnectionAgent] Failed to create video track for monitor %zu\n", i);
+            LogError("agent", "Failed to create video track for monitor %zu", i);
             continue;
         }
 
         std::string stream_id = "stream_" + std::to_string(i);
         auto add_result = peer_connection_->AddTrack(video_track, {stream_id});
         if (!add_result.ok()) {
-            printf("[PeerConnectionAgent] AddTrack error (monitor %zu): %s\n",
+            LogError("agent", "AddTrack error (monitor %zu): %s",
                    i, add_result.error().message());
         } else {
-            printf("[PeerConnectionAgent] Screen track added (monitor %zu)\n", i);
+            LogInfo("agent", "Screen track added (monitor %zu)", i);
         }
     }
 }
@@ -644,7 +644,7 @@ void PeerConnectionAgent::AddScreenTrack() {
 void PeerConnectionAgent::InitAudioCapture() {
     bool any_audio = config_.audio.system_enabled || config_.audio.mic_enabled;
     if (!any_audio) {
-        printf("[PeerConnectionAgent] Audio disabled in config\n");
+        LogInfo("agent", "Audio disabled in config");
         return;
     }
 
@@ -660,7 +660,7 @@ void PeerConnectionAgent::InitAudioCapture() {
     if (config_.audio.system_enabled) {
         system_capture_ = std::make_unique<WasapiCapture>();
         if (!system_capture_->Init(true)) {
-            printf("[PeerConnectionAgent] System audio init failed — continuing without\n");
+            LogWarn("agent", "System audio init failed — continuing without");
             system_capture_.reset();
         } else {
             // Set up resampler: device format -> 48kHz mono.
@@ -670,7 +670,7 @@ void PeerConnectionAgent::InitAudioCapture() {
                     system_capture_->channels(),
                     AudioMixer::kSampleRate,
                     AudioMixer::kChannels)) {
-                printf("[PeerConnectionAgent] System resampler init failed\n");
+                LogError("agent", "System resampler init failed");
                 system_capture_.reset();
                 system_resampler_.reset();
             } else {
@@ -696,7 +696,7 @@ void PeerConnectionAgent::InitAudioCapture() {
     if (config_.audio.mic_enabled) {
         mic_capture_ = std::make_unique<WasapiCapture>();
         if (!mic_capture_->Init(false)) {
-            printf("[PeerConnectionAgent] Mic init failed — continuing without\n");
+            LogWarn("agent", "Mic init failed — continuing without");
             mic_capture_.reset();
         } else {
             // Set up resampler: device format -> 48kHz mono.
@@ -706,7 +706,7 @@ void PeerConnectionAgent::InitAudioCapture() {
                     mic_capture_->channels(),
                     AudioMixer::kSampleRate,
                     AudioMixer::kChannels)) {
-                printf("[PeerConnectionAgent] Mic resampler init failed\n");
+                LogError("agent", "Mic resampler init failed");
                 mic_capture_.reset();
                 mic_resampler_.reset();
             } else {
@@ -728,11 +728,11 @@ void PeerConnectionAgent::InitAudioCapture() {
     }
 
     if (!system_capture_ && !mic_capture_) {
-        printf("[PeerConnectionAgent] No audio devices available — audio disabled\n");
+        LogWarn("agent", "No audio devices available — audio disabled");
         audio_source_ = nullptr;
         audio_mixer_.reset();
     } else {
-        printf("[PeerConnectionAgent] Audio capture initialized (system=%s mic=%s)\n",
+        LogInfo("agent", "Audio capture initialized (system=%s mic=%s)",
                system_capture_ ? "yes" : "no",
                mic_capture_ ? "yes" : "no");
     }
@@ -750,16 +750,16 @@ void PeerConnectionAgent::AddAudioTrack() {
     // Create a WebRTC audio track from our custom source.
     auto audio_track = pc_factory_->CreateAudioTrack("audio_0", audio_source_.get());
     if (!audio_track) {
-        printf("[PeerConnectionAgent] Failed to create audio track\n");
+        LogError("agent", "Failed to create audio track");
         return;
     }
 
     auto add_result = peer_connection_->AddTrack(audio_track, {"stream_0"});
     if (!add_result.ok()) {
-        printf("[PeerConnectionAgent] Audio AddTrack error: %s\n",
+        LogError("agent", "Audio AddTrack error: %s",
                add_result.error().message());
     } else {
-        printf("[PeerConnectionAgent] Audio track added\n");
+        LogInfo("agent", "Audio track added");
         // Start capturing and mixing audio.
         StartAudioCapture();
     }
@@ -778,7 +778,7 @@ void PeerConnectionAgent::StartAudioCapture() {
     // Start the mix thread that pulls from the mixer and pushes to WebRTC.
     audio_mix_thread_ = std::thread(&PeerConnectionAgent::AudioMixThread, this);
 
-    printf("[PeerConnectionAgent] Audio capture started\n");
+    LogInfo("agent", "Audio capture started");
 }
 
 void PeerConnectionAgent::StopAudioCapture() {
@@ -795,7 +795,7 @@ void PeerConnectionAgent::StopAudioCapture() {
         audio_mix_thread_.join();
     }
 
-    printf("[PeerConnectionAgent] Audio capture stopped\n");
+    LogInfo("agent", "Audio capture stopped");
 }
 
 void PeerConnectionAgent::AudioMixThread() {
@@ -854,7 +854,7 @@ private:
 
 void PeerConnectionAgent::SetupInputDataChannel() {
     if (!config_.control.enabled || !peer_connection_) {
-        printf("[PeerConnectionAgent] Remote control disabled or no PC\n");
+        LogDebug("agent", "Remote control disabled or no PC");
         return;
     }
 
@@ -868,7 +868,7 @@ void PeerConnectionAgent::SetupInputDataChannel() {
 
     auto result = peer_connection_->CreateDataChannelOrError("input", &dc_config);
     if (!result.ok()) {
-        printf("[PeerConnectionAgent] Failed to create input DataChannel: %s\n",
+        LogError("agent", "Failed to create input DataChannel: %s",
                result.error().message());
         return;
     }
@@ -882,13 +882,13 @@ void PeerConnectionAgent::SetupInputDataChannel() {
         });
     input_data_channel_->RegisterObserver(input_dc_observer_.get());
 
-    printf("[PeerConnectionAgent] Input DataChannel created (label=%s)\n",
+    LogInfo("agent", "Input DataChannel created (label=%s)",
            input_data_channel_->label().c_str());
 }
 
 void PeerConnectionAgent::OnDataChannel(
     webrtc::scoped_refptr<webrtc::DataChannelInterface> channel) {
-    printf("[PeerConnectionAgent] Remote DataChannel received: %s\n",
+    LogInfo("agent", "Remote DataChannel received: %s",
            channel->label().c_str());
 
     // LiveKit SFU sends data from other participants via channels labeled
@@ -901,7 +901,7 @@ void PeerConnectionAgent::OnDataChannel(
                 OnSfuDataChannelMessage(buffer);
             });
         lossy_dc_->RegisterObserver(lossy_dc_observer_.get());
-        printf("[PeerConnectionAgent] SFU lossy DataChannel attached\n");
+        LogInfo("agent", "SFU lossy DataChannel attached");
         return;
     }
 
@@ -912,7 +912,7 @@ void PeerConnectionAgent::OnDataChannel(
                 OnSfuDataChannelMessage(buffer);
             });
         reliable_dc_->RegisterObserver(reliable_dc_observer_.get());
-        printf("[PeerConnectionAgent] SFU reliable DataChannel attached\n");
+        LogInfo("agent", "SFU reliable DataChannel attached");
         return;
     }
 
@@ -926,7 +926,7 @@ void PeerConnectionAgent::OnDataChannel(
             });
         input_data_channel_->RegisterObserver(input_dc_observer_.get());
 
-        printf("[PeerConnectionAgent] Input DataChannel attached\n");
+        LogInfo("agent", "Input DataChannel attached");
     }
 }
 
@@ -1035,7 +1035,7 @@ void PeerConnectionAgent::OnCreateSessionDescSuccess(
 
     if (signaling_mode_ == SignalingMode::WHIP) {
         // WHIP path: wait for ICE gathering to complete, then POST full SDP.
-        printf("[PeerConnectionAgent] WHIP: Waiting for ICE gathering...\n");
+        LogInfo("agent", "WHIP: Waiting for ICE gathering...");
 
         // Spin-wait up to 5 seconds for ICE gathering to complete.
         for (int i = 0; i < 50; ++i) {
@@ -1049,51 +1049,51 @@ void PeerConnectionAgent::OnCreateSessionDescSuccess(
         // Get the local description with gathered ICE candidates.
         const auto* local_desc = peer_connection_->local_description();
         if (!local_desc) {
-            printf("[PeerConnectionAgent] WHIP: No local description available\n");
+            LogError("agent", "WHIP: No local description available");
             return;
         }
 
         std::string full_sdp = local_desc->ToString();
-        printf("[PeerConnectionAgent] WHIP: Posting offer SDP (%zu bytes)\n",
+        LogInfo("agent", "WHIP: Posting offer SDP (%zu bytes)",
                full_sdp.size());
 
         // POST offer via WHIP, get answer.
         if (!whip_client_->Publish(full_sdp, &whip_session_)) {
-            printf("[PeerConnectionAgent] WHIP: Publish failed\n");
+            LogError("agent", "WHIP: Publish failed");
             return;
         }
 
-        printf("[PeerConnectionAgent] WHIP: Got answer SDP (%zu bytes)\n",
+        LogInfo("agent", "WHIP: Got answer SDP (%zu bytes)",
                whip_session_.answer_sdp.size());
 
         // Set remote description with the answer.
         auto answer = webrtc::CreateSessionDescription(
             webrtc::SdpType::kAnswer, whip_session_.answer_sdp);
         if (!answer) {
-            printf("[PeerConnectionAgent] WHIP: Failed to parse answer SDP\n");
+            LogError("agent", "WHIP: Failed to parse answer SDP");
             return;
         }
 
         auto remote_observer = webrtc::make_ref_counted<SetRemoteSdpObserver>();
         peer_connection_->SetRemoteDescription(std::move(answer), remote_observer);
-        printf("[PeerConnectionAgent] WHIP: Signaling complete\n");
+        LogInfo("agent", "WHIP: Signaling complete");
         return;
     }
 
     // HubLive WebSocket path: send the SDP to the remote peer via signaling.
     if (pending_answer_) {
-        printf("[PeerConnectionAgent] Sending answer SDP (%zu bytes)\n",
+        LogInfo("agent", "Sending answer SDP (%zu bytes)",
                sdp_str.size());
         signaling_->SendAnswer(sdp_str);
     } else {
-        printf("[PeerConnectionAgent] Sending offer SDP (%zu bytes)\n",
+        LogInfo("agent", "Sending offer SDP (%zu bytes)",
                sdp_str.size());
         signaling_->SendOffer(sdp_str);
     }
 }
 
 void PeerConnectionAgent::OnCreateSessionDescFailure(webrtc::RTCError error) {
-    printf("[PeerConnectionAgent] CreateSessionDescription failed: %s\n",
+    LogError("agent", "CreateSessionDescription failed: %s",
            error.message());
 }
 
@@ -1103,13 +1103,13 @@ void PeerConnectionAgent::OnCreateSessionDescFailure(webrtc::RTCError error) {
 
 void PeerConnectionAgent::OnSignalingChange(
     webrtc::PeerConnectionInterface::SignalingState new_state) {
-    printf("[PeerConnectionAgent] Signaling state: %s\n",
+    LogDebug("agent", "Signaling state: %s",
            std::string(webrtc::PeerConnectionInterface::AsString(new_state)).c_str());
 }
 
 void PeerConnectionAgent::OnIceGatheringChange(
     webrtc::PeerConnectionInterface::IceGatheringState new_state) {
-    printf("[PeerConnectionAgent] ICE gathering state: %s\n",
+    LogDebug("agent", "ICE gathering state: %s",
            std::string(webrtc::PeerConnectionInterface::AsString(new_state)).c_str());
 }
 
@@ -1135,13 +1135,13 @@ void PeerConnectionAgent::OnIceCandidate(const webrtc::IceCandidate* candidate) 
 
 void PeerConnectionAgent::OnIceConnectionChange(
     webrtc::PeerConnectionInterface::IceConnectionState new_state) {
-    printf("[PeerConnectionAgent] ICE connection state: %s\n",
+    LogDebug("agent", "ICE connection state: %s",
            std::string(webrtc::PeerConnectionInterface::AsString(new_state)).c_str());
 }
 
 void PeerConnectionAgent::OnConnectionChange(
     webrtc::PeerConnectionInterface::PeerConnectionState new_state) {
-    printf("[PeerConnectionAgent] Connection state: %s\n",
+    LogInfo("agent", "Connection state: %s",
            std::string(webrtc::PeerConnectionInterface::AsString(new_state)).c_str());
 
     switch (new_state) {
@@ -1168,7 +1168,7 @@ void PeerConnectionAgent::OnConnectionChange(
 
 void PeerConnectionAgent::SubscriberObserver::OnDataChannel(
     webrtc::scoped_refptr<webrtc::DataChannelInterface> channel) {
-    printf("[Subscriber] DataChannel received: %s\n", channel->label().c_str());
+    LogInfo("agent", "Subscriber DataChannel received: %s", channel->label().c_str());
     // Route to the main agent's OnDataChannel handler.
     agent_->OnDataChannel(channel);
 }

@@ -1,6 +1,6 @@
 #include "audio_capture.h"
+#include "logger.h"
 
-#include <cstdio>
 #include <cstring>
 #include <vector>
 
@@ -30,7 +30,7 @@ bool WasapiCapture::Init(bool loopback) {
     // COM must be initialized on this thread.
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     if (FAILED(hr) && hr != RPC_E_CHANGED_MODE && hr != S_FALSE) {
-        printf("[audio] CoInitializeEx failed: 0x%08lx\n", hr);
+        LogError("audio", "CoInitializeEx failed: 0x%08lx", hr);
         return false;
     }
 
@@ -40,7 +40,7 @@ bool WasapiCapture::Init(bool loopback) {
                           CLSCTX_ALL, __uuidof(IMMDeviceEnumerator),
                           reinterpret_cast<void**>(&enumerator));
     if (FAILED(hr) || !enumerator) {
-        printf("[audio] Failed to create device enumerator: 0x%08lx\n", hr);
+        LogError("audio", "Failed to create device enumerator: 0x%08lx", hr);
         return false;
     }
 
@@ -50,7 +50,7 @@ bool WasapiCapture::Init(bool loopback) {
     enumerator->Release();
 
     if (FAILED(hr) || !device_) {
-        printf("[audio] No default %s device found: 0x%08lx\n",
+        LogError("audio", "No default %s device found: 0x%08lx",
                loopback ? "render" : "capture", hr);
         return false;
     }
@@ -62,7 +62,7 @@ bool WasapiCapture::Init(bool loopback) {
         PropVariantInit(&var);
         if (SUCCEEDED(props->GetValue(PKEY_Device_FriendlyName, &var))) {
             if (var.vt == VT_LPWSTR && var.pwszVal) {
-                printf("[audio] %s device: %ls\n",
+                LogInfo("audio", "%s device: %ls",
                        loopback ? "Loopback" : "Mic", var.pwszVal);
             }
             PropVariantClear(&var);
@@ -74,7 +74,7 @@ bool WasapiCapture::Init(bool loopback) {
     hr = device_->Activate(__uuidof(IAudioClient), CLSCTX_ALL,
                            nullptr, reinterpret_cast<void**>(&audio_client_));
     if (FAILED(hr) || !audio_client_) {
-        printf("[audio] Failed to activate audio client: 0x%08lx\n", hr);
+        LogError("audio", "Failed to activate audio client: 0x%08lx", hr);
         return false;
     }
 
@@ -82,7 +82,7 @@ bool WasapiCapture::Init(bool loopback) {
     WAVEFORMATEX* mix_format = nullptr;
     hr = audio_client_->GetMixFormat(&mix_format);
     if (FAILED(hr) || !mix_format) {
-        printf("[audio] GetMixFormat failed: 0x%08lx\n", hr);
+        LogError("audio", "GetMixFormat failed: 0x%08lx", hr);
         return false;
     }
 
@@ -90,7 +90,7 @@ bool WasapiCapture::Init(bool loopback) {
     channels_ = mix_format->nChannels;
     bits_per_sample_ = mix_format->wBitsPerSample;
 
-    printf("[audio] %s format: %d Hz, %d ch, %d bits\n",
+    LogInfo("audio", "%s format: %d Hz, %d ch, %d bits",
            loopback ? "Loopback" : "Mic",
            sample_rate_, channels_, bits_per_sample_);
 
@@ -119,7 +119,7 @@ bool WasapiCapture::Init(bool loopback) {
     CoTaskMemFree(mix_format);
 
     if (FAILED(hr)) {
-        printf("[audio] AudioClient Initialize failed: 0x%08lx\n", hr);
+        LogError("audio", "AudioClient Initialize failed: 0x%08lx", hr);
         return false;
     }
 
@@ -127,11 +127,11 @@ bool WasapiCapture::Init(bool loopback) {
     hr = audio_client_->GetService(__uuidof(IAudioCaptureClient),
                                    reinterpret_cast<void**>(&capture_client_));
     if (FAILED(hr) || !capture_client_) {
-        printf("[audio] Failed to get capture client: 0x%08lx\n", hr);
+        LogError("audio", "Failed to get capture client: 0x%08lx", hr);
         return false;
     }
 
-    printf("[audio] %s capture initialized\n", loopback ? "Loopback" : "Mic");
+    LogInfo("audio", "%s capture initialized", loopback ? "Loopback" : "Mic");
     return true;
 }
 
@@ -141,13 +141,13 @@ bool WasapiCapture::Start() {
 
     HRESULT hr = audio_client_->Start();
     if (FAILED(hr)) {
-        printf("[audio] AudioClient Start failed: 0x%08lx\n", hr);
+        LogError("audio", "AudioClient Start failed: 0x%08lx", hr);
         return false;
     }
 
     running_ = true;
     capture_thread_ = std::thread(&WasapiCapture::CaptureThread, this);
-    printf("[audio] %s capture started\n", loopback_ ? "Loopback" : "Mic");
+    LogInfo("audio", "%s capture started", loopback_ ? "Loopback" : "Mic");
     return true;
 }
 
@@ -172,7 +172,7 @@ void WasapiCapture::CaptureThread() {
         UINT32 packet_length = 0;
         HRESULT hr = capture_client_->GetNextPacketSize(&packet_length);
         if (FAILED(hr)) {
-            printf("[audio] GetNextPacketSize failed: 0x%08lx\n", hr);
+            LogError("audio", "GetNextPacketSize failed: 0x%08lx", hr);
             break;
         }
 
@@ -184,7 +184,7 @@ void WasapiCapture::CaptureThread() {
             hr = capture_client_->GetBuffer(&data, &frames_available, &flags,
                                             nullptr, nullptr);
             if (FAILED(hr)) {
-                printf("[audio] GetBuffer failed: 0x%08lx\n", hr);
+                LogError("audio", "GetBuffer failed: 0x%08lx", hr);
                 break;
             }
 

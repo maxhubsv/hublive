@@ -1,5 +1,5 @@
 #include "signaling_client.h"
-#include <cstdio>
+#include "logger.h"
 
 SignalingClient::SignalingClient(WebSocketTransport* transport)
     : transport_(transport) {
@@ -11,37 +11,37 @@ SignalingClient::SignalingClient(WebSocketTransport* transport)
 void SignalingClient::OnMessage(const std::vector<uint8_t>& data) {
     hublive::SignalResponse response;
     if (!response.ParseFromArray(data.data(), static_cast<int>(data.size()))) {
-        printf("  [signal] Failed to parse SignalResponse (%zu bytes)\n", data.size());
+        LogError("signal", "Failed to parse SignalResponse (%zu bytes)", data.size());
         return;
     }
 
     switch (response.message_case()) {
     case hublive::SignalResponse::kJoin:
-        printf("  [signal] JoinResponse: room=%s participant=%s\n",
+        LogInfo("signal", "JoinResponse: room=%s participant=%s",
                response.join().room().name().c_str(),
                response.join().participant().identity().c_str());
         if (on_join_) on_join_(response.join());
         break;
 
     case hublive::SignalResponse::kAnswer:
-        printf("  [signal] Answer received\n");
+        LogInfo("signal", "Answer received");
         if (on_answer_) on_answer_(response.answer().sdp());
         break;
 
     case hublive::SignalResponse::kOffer:
-        printf("  [signal] Offer received (subscriber)\n");
+        LogInfo("signal", "Offer received (subscriber)");
         if (on_offer_) on_offer_(response.offer().sdp());
         break;
 
     case hublive::SignalResponse::kTrickle: {
         auto& trickle = response.trickle();
-        printf("  [signal] Trickle ICE (target=%d)\n", trickle.target());
+        LogDebug("signal", "Trickle ICE (target=%d)", trickle.target());
         if (on_trickle_) on_trickle_(trickle.candidateinit(), trickle.target());
         break;
     }
 
     case hublive::SignalResponse::kTrackPublished:
-        printf("  [signal] TrackPublished: cid=%s sid=%s\n",
+        LogInfo("signal", "TrackPublished: cid=%s sid=%s",
                response.track_published().cid().c_str(),
                response.track_published().track().sid().c_str());
         if (on_track_published_)
@@ -53,11 +53,11 @@ void SignalingClient::OnMessage(const std::vector<uint8_t>& data) {
         break;
 
     case hublive::SignalResponse::kLeave:
-        printf("  [signal] Server requested leave\n");
+        LogInfo("signal", "Server requested leave");
         break;
 
     default:
-        printf("  [signal] Unhandled message type: %d\n", response.message_case());
+        LogWarn("signal", "Unhandled message type: %d", response.message_case());
         break;
     }
 }
@@ -65,7 +65,7 @@ void SignalingClient::OnMessage(const std::vector<uint8_t>& data) {
 bool SignalingClient::SendRequest(const hublive::SignalRequest& request) {
     std::string serialized;
     if (!request.SerializeToString(&serialized)) {
-        printf("  [signal] Failed to serialize SignalRequest\n");
+        LogError("signal", "Failed to serialize SignalRequest");
         return false;
     }
     return transport_->Send(reinterpret_cast<const uint8_t*>(serialized.data()),
@@ -77,7 +77,7 @@ bool SignalingClient::SendOffer(const std::string& sdp) {
     auto* offer = request.mutable_offer();
     offer->set_type("offer");
     offer->set_sdp(sdp);
-    printf("  [signal] Sending offer (%zu bytes SDP)\n", sdp.size());
+    LogInfo("signal", "Sending offer (%zu bytes SDP)", sdp.size());
     return SendRequest(request);
 }
 
@@ -86,7 +86,7 @@ bool SignalingClient::SendAnswer(const std::string& sdp) {
     auto* answer = request.mutable_answer();
     answer->set_type("answer");
     answer->set_sdp(sdp);
-    printf("  [signal] Sending answer\n");
+    LogInfo("signal", "Sending answer");
     return SendRequest(request);
 }
 
@@ -109,7 +109,7 @@ bool SignalingClient::SendAddTrack(const std::string& cid, const std::string& na
     add_track->set_source(source);
     add_track->set_width(width);
     add_track->set_height(height);
-    printf("  [signal] SendAddTrack: cid=%s name=%s %dx%d\n",
+    LogInfo("signal", "SendAddTrack: cid=%s name=%s %dx%d",
            cid.c_str(), name.c_str(), width, height);
     return SendRequest(request);
 }
@@ -123,7 +123,7 @@ bool SignalingClient::SendAddAudioTrack(const std::string& cid,
     add_track->set_name(name);
     add_track->set_type(hublive::TrackType::AUDIO);
     add_track->set_source(source);
-    printf("  [signal] SendAddAudioTrack: cid=%s name=%s\n",
+    LogInfo("signal", "SendAddAudioTrack: cid=%s name=%s",
            cid.c_str(), name.c_str());
     return SendRequest(request);
 }

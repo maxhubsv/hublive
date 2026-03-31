@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { ToggleSwitch } from "@/shared/ui/toggle-switch";
+import { Switch } from "@/shared/ui/switch";
 import { SettingSection } from "../components/SettingSection";
 import { SettingItem } from "../components/SettingItem";
 import { useSettingsStore } from "../store/settings.store";
@@ -126,9 +126,9 @@ export default function SettingsPage() {
             description={t("settings.autoConnectDesc")}
             isLast
             control={
-              <ToggleSwitch
+              <Switch
                 checked={autoConnect}
-                onChange={setAutoConnect}
+                onCheckedChange={setAutoConnect}
               />
             }
           />

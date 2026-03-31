@@ -9,8 +9,9 @@
 #include "rtc_base/time_utils.h"
 #include "third_party/libyuv/include/libyuv/convert.h"
 
+#include "logger.h"
+
 #include <chrono>
-#include <cstdio>
 #include <thread>
 
 webrtc::scoped_refptr<ScreenCaptureSource> ScreenCaptureSource::Create(int monitor_index, int fps, bool use_directx) {
@@ -24,24 +25,24 @@ ScreenCaptureSource::ScreenCaptureSource(int monitor_index, int fps, bool use_di
 
     auto screen_capturer = webrtc::DesktopCapturer::CreateScreenCapturer(options);
     if (!screen_capturer) {
-        printf("  [capture] ERROR: Failed to create screen capturer for monitor %d\n", monitor_index);
+        LogError("capture", "Failed to create screen capturer for monitor %d", monitor_index);
         return;
     }
 
     webrtc::DesktopCapturer::SourceList sources;
     if (screen_capturer->GetSourceList(&sources) && monitor_index < static_cast<int>(sources.size())) {
         screen_capturer->SelectSource(sources[monitor_index].id);
-        printf("  [capture] Selected monitor %d: %s (directx=%s)\n", monitor_index,
+        LogInfo("capture", "Selected monitor %d: %s (directx=%s)", monitor_index,
                sources[monitor_index].title.c_str(), use_directx ? "on" : "off");
     } else if (!sources.empty()) {
         screen_capturer->SelectSource(sources[0].id);
-        printf("  [capture] Fallback to monitor 0\n");
+        LogWarn("capture", "Fallback to monitor 0");
     }
 
     // Wrap with cursor composer to render mouse cursor on captured frames
     capturer_ = std::make_unique<webrtc::DesktopAndCursorComposer>(
         std::move(screen_capturer), options);
-    printf("  [capture] Mouse cursor rendering enabled\n");
+    LogInfo("capture", "Mouse cursor rendering enabled");
 }
 
 ScreenCaptureSource::~ScreenCaptureSource() {
@@ -54,7 +55,7 @@ void ScreenCaptureSource::Start() {
     capturer_->Start(this);
     running_ = true;
     capture_thread_ = std::make_unique<std::thread>(&ScreenCaptureSource::CaptureThread, this);
-    printf("  [capture] Started @ %d fps\n", fps_);
+    LogInfo("capture", "Started @ %d fps", fps_);
 }
 
 void ScreenCaptureSource::Stop() {
@@ -63,7 +64,7 @@ void ScreenCaptureSource::Stop() {
         capture_thread_->join();
     }
     capture_thread_.reset();
-    printf("  [capture] Stopped\n");
+    LogInfo("capture", "Stopped");
 }
 
 void ScreenCaptureSource::CaptureThread() {

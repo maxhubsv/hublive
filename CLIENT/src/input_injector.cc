@@ -1,5 +1,5 @@
 #include "input_injector.h"
-#include <cstdio>
+#include "logger.h"
 #include <algorithm>
 
 void InputInjector::Init(int screen_width, int screen_height) {
@@ -7,7 +7,7 @@ void InputInjector::Init(int screen_width, int screen_height) {
     screen_height_ = screen_height;
     last_mouse_seq_ = 0;
     last_kb_seq_ = 0;
-    printf("[InputInjector] Init: %dx%d\n", screen_width_, screen_height_);
+    LogInfo("input", "Init: %dx%d", screen_width_, screen_height_);
 }
 
 // ---------------------------------------------------------------------------

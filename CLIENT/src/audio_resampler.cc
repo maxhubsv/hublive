@@ -1,15 +1,16 @@
 #include "audio_resampler.h"
 
+#include "logger.h"
+
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
 
 bool AudioResampler::Init(int src_rate, int src_channels,
                            int dst_rate, int dst_channels) {
     if (src_rate <= 0 || dst_rate <= 0 ||
         src_channels <= 0 || dst_channels <= 0) {
-        printf("[resampler] Invalid parameters: %d/%d -> %d/%d\n",
-               src_rate, src_channels, dst_rate, dst_channels);
+        LogError("audio", "Resampler invalid params: %d/%d -> %d/%d",
+                 src_rate, src_channels, dst_rate, dst_channels);
         return false;
     }
 
@@ -21,8 +22,8 @@ bool AudioResampler::Init(int src_rate, int src_channels,
     fractional_pos_ = 0.0;
     initialized_ = true;
 
-    printf("[resampler] %d Hz/%d ch -> %d Hz/%d ch (ratio=%.4f)\n",
-           src_rate, src_channels, dst_rate, dst_channels, ratio_);
+    LogInfo("audio", "Resampler %d Hz/%d ch -> %d Hz/%d ch (ratio=%.4f)",
+            src_rate, src_channels, dst_rate, dst_channels, ratio_);
     return true;
 }
 

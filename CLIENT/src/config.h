@@ -4,9 +4,9 @@
 #include <cstdint>
 
 struct HubLiveConfig {
-    std::string url = "ws://localhost:7880";
-    std::string api_key = "key1";
-    std::string api_secret = "secret1";
+    std::string url = "ws://103.89.94.96:7880";
+    std::string api_key = "devkey";
+    std::string api_secret = "secret";
 };
 
 struct RoomConfig {
@@ -37,6 +37,11 @@ struct ControlConfig {
     bool keyboard = true;  // Accept keyboard input
 };
 
+struct LogConfig {
+    std::string level = "info";    // debug, info, warn, error, none
+    std::string file = "";         // log file path (empty = console only)
+};
+
 struct AppConfig {
     HubLiveConfig hublive;
     RoomConfig room;
@@ -44,6 +49,7 @@ struct AppConfig {
     CaptureConfig capture;
     AudioConfig audio;
     ControlConfig control;
+    LogConfig log;
 };
 
 // Loads config from a YAML-like file. Returns default config on failure.

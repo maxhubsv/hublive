@@ -1,7 +1,6 @@
 #include "custom_audio_source.h"
 
 #include <algorithm>
-#include <cstdio>
 
 CustomAudioSource::CustomAudioSource() {
     // Disable all audio processing since we provide raw mixed audio.

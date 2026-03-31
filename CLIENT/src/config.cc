@@ -14,7 +14,7 @@ AppConfig LoadConfig(const std::string& path) {
     AppConfig config;
     std::ifstream file(path);
     if (!file.is_open()) {
-        printf("Warning: Cannot open %s, using defaults\n", path.c_str());
+        // No config file found — use embedded defaults (VPS server).
         return config;
     }
 
@@ -57,6 +57,9 @@ AppConfig LoadConfig(const std::string& path) {
             if (key == "enabled") config.control.enabled = (value == "true" || value == "1");
             else if (key == "mouse") config.control.mouse = (value == "true" || value == "1");
             else if (key == "keyboard") config.control.keyboard = (value == "true" || value == "1");
+        } else if (current_section == "log") {
+            if (key == "level") config.log.level = value;
+            else if (key == "file") config.log.file = value;
         }
     }
 
